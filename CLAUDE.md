@@ -31,11 +31,15 @@ continuously — no further manual `kubectl apply` for anything under it.
 ## Architecture
 
 **GitOps layer** (`argocd-apps/`) — `bootstrap/root-app.yaml` is the
-app-of-apps root (`directory.recurse: true`, `include: "{*/app.yaml,ingress-routes.yaml}"`
-— an allowlist, since excluding the open-ended vendored `chart/` trees by
-glob proved unreliable). Each `argocd-apps/<app>/` follows the same pattern:
-`app.yaml` (ArgoCD `Application`), `chart/` (vendored via `helm pull
---untar` — see the `helm-vendor` skill), `values/values.yaml`.
+app-of-apps root (`directory.recurse: true`, `include: "*/app.yaml"` — an
+allowlist, since excluding the open-ended vendored `chart/` trees by glob
+proved unreliable). Every child (`traefik`, `prometheus`, `grafana`,
+`loki`, `jaeger`, `opentelemetry-collector`, `ingress-routes`) follows the
+same `<app>/app.yaml` shape, so root's own sync is always just
+`Application` objects. Helm-backed apps additionally have `chart/`
+(vendored via `helm pull --untar` — see the `helm-vendor` skill) and
+`values/values.yaml`; `ingress-routes` is a plain-manifest app instead
+(see below).
 
 **Namespace layout:**
 
@@ -48,8 +52,14 @@ glob proved unreliable). Each `argocd-apps/<app>/` follows the same pattern:
 
 **Ingress:** plain `NodePort` (no `extraPortMappings`) — reached via the
 node's container IP + NodePort `30080`, not `localhost`. Path-based routing
-via `argocd-apps/ingress-routes.yaml` (Traefik `IngressRoute`s, one per UI,
-each in its target's own namespace).
+via the `ingress-routes` child Application (`argocd-apps/ingress-routes/`,
+Traefik `IngressRoute`s, one per UI, each in its target's own namespace).
+It's a **separate** Application from the others on purpose — its
+`IngressRoute`/`Middleware` CRs depend on CRDs the `traefik` Application
+installs, and folding them into root's own sync made ArgoCD fail resource
+discovery for root's entire sync before `traefik` ever got applied. As its
+own Application, it simply retries on its own automated-sync cycle until
+those CRDs exist.
 
 **Data flow:** Apps → OTel Collector (OTLP :4317/:4318) → Prometheus
 (metrics) + Jaeger (traces, OTLP :4317) + Loki (logs, native OTLP at
@@ -60,7 +70,7 @@ each in its target's own namespace).
 - Jaeger (`base_path: /jaeger`) and ArgoCD (`--rootpath=/argocd`) handle
   their own subpath — their `IngressRoute`s must NOT strip the prefix.
   Grafana and Hubble UI need the prefix stripped instead (see comments in
-  `argocd-apps/ingress-routes.yaml`).
+  `argocd-apps/ingress-routes/routes.yaml`).
 - OTel Collector uses the **contrib** image (`otelcol-contrib`) — the
   `prometheus` exporter isn't in the core image.
 - Loki runs in `SingleBinary` mode with filesystem storage, not

@@ -69,9 +69,10 @@ kubectl apply -f bootstrap/root-app.yaml
 kubectl get applications -n argocd
 ```
 
-This is the **only** manual apply for the GitOps tree. `root` syncs
-everything under `argocd-apps/` (each child `app.yaml`, plus
-`ingress-routes.yaml`) and self-heals on drift.
+This is the **only** manual apply for the GitOps tree. `root` syncs every
+child `app.yaml` under `argocd-apps/` (including `ingress-routes/app.yaml`,
+which then syncs its own `routes.yaml` independently) and self-heals on
+drift.
 
 ## Monitor
 

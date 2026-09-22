@@ -21,7 +21,7 @@ for f in argocd-apps/*/app.yaml; do
 done
 
 echo "--- ingress-routes ---"
-kubectl apply --dry-run=client -f argocd-apps/ingress-routes.yaml
+kubectl apply --dry-run=client -f argocd-apps/ingress-routes/routes.yaml
 ```
 
 If `--strict` is passed, also lint every YAML file (excluding vendored

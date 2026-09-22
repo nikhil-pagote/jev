@@ -1,7 +1,16 @@
 # The one manual `kubectl apply`. From here on, ArgoCD watches argocd-apps/
-# in this repo continuously — new commits (a new app.yaml, an edited
-# values.yaml, a change to ingress-routes.yaml) are picked up and
-# reconciled automatically, no further manual apply needed.
+# in this repo continuously — new commits (a new <app>/app.yaml, an edited
+# values.yaml) are picked up and reconciled automatically, no further
+# manual apply needed.
+#
+# Every child (traefik, prometheus, grafana, loki, jaeger,
+# opentelemetry-collector, ingress-routes) follows the same `<app>/app.yaml`
+# shape, so root's own manifest set is always just `Application` objects —
+# a kind the API server always recognizes. CRD-dependent raw resources
+# (Traefik's IngressRoute/Middleware) live in their own child Application
+# (ingress-routes) instead of being folded directly into root: bundling
+# them here made ArgoCD fail resource discovery for root's *entire* sync
+# before even applying the traefik Application that installs those CRDs.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -15,11 +24,7 @@ spec:
     path: argocd-apps
     directory:
       recurse: true
-      # Allowlist, not a denylist: vendored charts are an open-ended tree
-      # (e.g. grafana/chart/ci/*.yaml ships test-fixture "values" files that
-      # aren't valid manifests) — safer to name exactly what we want than to
-      # try to exclude everything we don't.
-      include: "{*/app.yaml,ingress-routes.yaml}"
+      include: "*/app.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
@@ -29,10 +34,3 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      # ArgoCD validates every resource in the manifest set up front,
-      # before applying anything — sync-waves alone don't defer that
-      # validation. Without this, the traefik.io/IngressRoute and
-      # Middleware CRs in ingress-routes.yaml (wave 1) fail validation
-      # before the traefik child Application (wave 0, which installs
-      # those CRDs) ever gets applied, and the whole sync fails outright.
-      - SkipDryRunOnMissingResource=true

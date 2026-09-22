@@ -12,7 +12,7 @@ invalid.
 ```bash
 echo "--- pre-push: manifest dry-run ---"
 ok=1
-for f in argocd-apps/*/app.yaml argocd-apps/ingress-routes.yaml bootstrap/root-app.yaml; do
+for f in argocd-apps/*/app.yaml argocd-apps/ingress-routes/routes.yaml bootstrap/root-app.yaml; do
   [ -f "$f" ] || continue
   kubectl apply --dry-run=client -f "$f" >/dev/null 2>&1 || { echo "INVALID: $f"; ok=0; }
 done

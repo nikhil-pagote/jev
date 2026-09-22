@@ -1,0 +1,33 @@
+# A separate child Application (not raw manifests folded into root's own
+# sync) on purpose: these IngressRoute/Middleware resources depend on CRDs
+# the traefik Application installs. Bundling them into root's single sync
+# batch made ArgoCD fail resource discovery for the whole operation before
+# even applying the traefik Application (sync-waves don't defer that
+# up-front validation). As their own Application, this one simply retries
+# on its own automated-sync/selfHeal cycle until traefik's CRDs exist —
+# the standard pattern for this exact ordering problem.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ingress-routes
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: jev-observability-stack
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/nikhil-pagote/jev.git
+    targetRevision: HEAD
+    path: argocd-apps/ingress-routes
+    directory:
+      exclude: "app.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true

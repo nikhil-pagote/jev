@@ -67,22 +67,25 @@ jev/
 │   ├── loki/          {app.yaml, chart/, values/values.yaml}
 │   ├── jaeger/        {app.yaml, chart/, values/values.yaml}
 │   ├── opentelemetry-collector/ {app.yaml, chart/, values/values.yaml}
-│   └── ingress-routes.yaml
+│   └── ingress-routes/ {app.yaml, routes.yaml}
 └── .claude/{skills,hooks,agents,intent.md,plan.md,settings.json}
 ```
 
-Every app under `argocd-apps/<name>/` follows the same three-file pattern:
-`app.yaml` (ArgoCD `Application`, `source.path` → local `chart/`,
-`helm.valueFiles: [../values/values.yaml]`, `syncPolicy.automated:
-{prune: true, selfHeal: true}`, `syncOptions: [CreateNamespace=true]`;
-Traefik gets `sync-wave: "0"`), `chart/` (vendored via `helm pull --untar`),
-`values/values.yaml`.
+Every Helm-backed app under `argocd-apps/<name>/` follows the same
+three-file pattern: `app.yaml` (ArgoCD `Application`, `source.path` →
+local `chart/`, `helm.valueFiles: [../values/values.yaml]`,
+`syncPolicy.automated: {prune: true, selfHeal: true}`, `syncOptions:
+[CreateNamespace=true]`; Traefik gets `sync-wave: "0"`), `chart/`
+(vendored via `helm pull --untar`), `values/values.yaml`. `ingress-routes`
+is a plain-manifest app instead — see below.
 
-`bootstrap/root-app.yaml` is the app-of-apps root: source =
-`argocd-apps/` (`directory.recurse: true`, `include:
-"{*/app.yaml,ingress-routes.yaml}"` — an allowlist; a glob `exclude` for
-the vendored `chart/` trees proved unreliable in practice), `syncPolicy.automated`
-with `selfHeal`.
+`bootstrap/root-app.yaml` is the app-of-apps root: source = `argocd-apps/`
+(`directory.recurse: true`, `include: "*/app.yaml"` — an allowlist; a glob
+`exclude` for the vendored `chart/` trees proved unreliable in practice),
+`syncPolicy.automated` with `selfHeal`. Every child (including
+`ingress-routes`) follows the same `<app>/app.yaml` shape, so root's own
+sync is always just `Application` objects — never a raw CRD-dependent
+resource, which matters (see below).
 
 ## Component choices
 
@@ -95,9 +98,16 @@ with `selfHeal`.
 | Jaeger | `jaegertracing/jaeger` | all-in-one, in-memory; `--query.base-path=/jaeger` |
 | OTel Collector | `open-telemetry/opentelemetry-collector` | Deployment mode, OTLP fan-out |
 
-`argocd-apps/ingress-routes.yaml` holds one Traefik `IngressRoute` per UI,
-each declared in its target's own namespace — avoids the cross-namespace
-backend restriction a plain `networking.k8s.io/v1 Ingress` would hit.
+`argocd-apps/ingress-routes/routes.yaml` holds one Traefik `IngressRoute`
+per UI, each declared in its target's own namespace — avoids the
+cross-namespace backend restriction a plain `networking.k8s.io/v1 Ingress`
+would hit. `ingress-routes` is its **own** child Application, separate
+from root's direct manifest inclusion: its CRs depend on CRDs the
+`traefik` Application installs, and ArgoCD validates a sync's entire
+manifest set up front — bundling them into root's own sync made root fail
+resource discovery for the whole operation before `traefik` ever synced.
+As an independent Application it just retries on its own automated-sync
+cycle until those CRDs exist.
 
 ## Cilium bootstrap detail
 
