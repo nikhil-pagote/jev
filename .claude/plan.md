@@ -79,8 +79,10 @@ Traefik gets `sync-wave: "0"`), `chart/` (vendored via `helm pull --untar`),
 `values/values.yaml`.
 
 `bootstrap/root-app.yaml` is the app-of-apps root: source =
-`argocd-apps/` (`directory.recurse: true`, `exclude:
-"**/chart/**,**/values/**"`), `syncPolicy.automated` with `selfHeal`.
+`argocd-apps/` (`directory.recurse: true`, `include:
+"{*/app.yaml,ingress-routes.yaml}"` — an allowlist; a glob `exclude` for
+the vendored `chart/` trees proved unreliable in practice), `syncPolicy.automated`
+with `selfHeal`.
 
 ## Component choices
 

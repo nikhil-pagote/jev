@@ -31,8 +31,9 @@ continuously — no further manual `kubectl apply` for anything under it.
 ## Architecture
 
 **GitOps layer** (`argocd-apps/`) — `bootstrap/root-app.yaml` is the
-app-of-apps root (`directory.recurse: true`, excluding `**/chart/**` and
-`**/values/**`). Each `argocd-apps/<app>/` follows the same pattern:
+app-of-apps root (`directory.recurse: true`, `include: "{*/app.yaml,ingress-routes.yaml}"`
+— an allowlist, since excluding the open-ended vendored `chart/` trees by
+glob proved unreliable). Each `argocd-apps/<app>/` follows the same pattern:
 `app.yaml` (ArgoCD `Application`), `chart/` (vendored via `helm pull
 --untar` — see the `helm-vendor` skill), `values/values.yaml`.
 

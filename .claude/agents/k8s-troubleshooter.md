@@ -35,8 +35,9 @@ you report findings and a proposed fix back to the calling session.
 | Symptom | Likely cause |
 |---|---|
 | All nodes `NotReady` after `kind create cluster` | Expected — Cilium not installed yet. Not a bug. |
+| Cilium `Init:CrashLoopBackOff`, `mount-bpf-fs` init container logs `mount: /sys/fs/bpf: permission denied` | Rootless Podman can't perform `mount -t bpf` itself (no `CAP_SYS_ADMIN` in the host's initial userns, even "privileged"). Fixed by `kind-config.yaml`'s `extraMounts` (bind-mounts host's bpffs into each node) + `bpf.autoMount.enabled=false` on the Cilium Helm install — if this recurs, one of those two is missing or the cluster was created before they were added (recreate it) |
 | Cilium agent `CrashLoopBackOff`, logs mention apiserver connection refused | `k8sServiceHost`/`k8sServicePort` wrong — re-run `scripts/cilium-api-endpoint.sh` |
-| `root` Application shows manifests it shouldn't (Chart.yaml, README.md as raw resources) | `bootstrap/root-app.yaml`'s `directory.exclude` isn't matching `**/chart/**,**/values/**` |
+| `root` Application errors with "Object 'Kind' is missing" from a file deep in a vendored `chart/` tree | `bootstrap/root-app.yaml` uses `directory.include: "{*/app.yaml,ingress-routes.yaml}"` (an allowlist) — glob `exclude` patterns like `**/chart/**` don't reliably match ArgoCD's directory generator across nested paths, so we allowlist instead. If this recurs, a new top-level file was added that isn't covered by the include pattern |
 | IngressRoute 404s even though pod is Running | `IngressRoute` CRD not yet installed (Traefik app hasn't synced — sync-wave ordering) or `StripPrefix` middleware misconfigured |
 | Grafana loads but CSS/JS broken under `/grafana` | `server.serve_from_sub_path` / `root_url` mismatch in `argocd-apps/grafana/values/values.yaml` |
 | Jaeger UI "Unknown path" | missing `--query.base-path=/jaeger` in Jaeger chart values |

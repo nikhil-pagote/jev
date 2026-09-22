@@ -28,7 +28,8 @@ helm install cilium cilium/cilium \
   --set k8sServicePort="$API_PORT" \
   --set hubble.relay.enabled=true \
   --set hubble.ui.enabled=true \
-  --wait
+  --set bpf.autoMount.enabled=false \
+  --wait --timeout 10m
 
 kubectl get nodes
 # All nodes should now be Ready
@@ -58,4 +59,5 @@ helm uninstall cilium -n kube-system
 |---|---|---|
 | Nodes stuck `NotReady` after install | Cilium agents not Running yet | `kubectl -n kube-system get pods -l k8s-app=cilium`; check logs |
 | Cilium agent `CrashLoopBackOff` mentioning apiserver connection | Wrong `k8sServiceHost`/`k8sServicePort` | Re-run `./scripts/cilium-api-endpoint.sh` and re-install with correct values |
+| Cilium agent `Init:CrashLoopBackOff`, `mount-bpf-fs` logs `mount: /sys/fs/bpf: permission denied` | Rootless Podman can't perform the `mount -t bpf` syscall itself (no `CAP_SYS_ADMIN` in the host's initial userns, even in a "privileged" container) | Already handled by this repo's `kind-config.yaml` (`extraMounts` bind-mounts the host's bpffs into each node) + `bpf.autoMount.enabled=false` on the Helm install above. If you hit this, you're missing one of those two pieces — check `kind-config.yaml` has the `extraMounts` block and re-create the cluster |
 | Pods can't resolve DNS | CoreDNS pods not yet scheduled (needed CNI first) | Wait — CoreDNS pods were `Pending` until Cilium came up; they'll schedule automatically |

@@ -115,7 +115,8 @@ git push
 |---|---|
 | All nodes `NotReady` right after `make cluster` | Expected — Cilium isn't installed yet |
 | Cilium agent `CrashLoopBackOff`, apiserver connection errors | Wrong `k8sServiceHost`/`k8sServicePort` — re-run `scripts/cilium-api-endpoint.sh` |
-| `root` Application shows raw chart files as resources | `bootstrap/root-app.yaml`'s `directory.exclude` pattern isn't matching |
+| Cilium agent `Init:CrashLoopBackOff`, `mount-bpf-fs` logs `permission denied` | Rootless Podman can't do the `mount -t bpf` syscall itself — already worked around via `kind-config.yaml`'s `extraMounts` (bind-mounts the host's bpffs) + `bpf.autoMount.enabled=false` in the `cilium` Makefile target |
+| `root` Application shows raw chart files as resources | `bootstrap/root-app.yaml`'s `directory.include` allowlist isn't matching a new file you added |
 | `/grafana` 404s or loads with broken CSS | `IngressRoute` not synced yet, or `serve_from_sub_path`/`root_url` mismatch |
 | `/jaeger` or `/argocd` broken paths | Their `base_path`/`rootpath` config must match the IngressRoute's un-stripped prefix (see `argocd-apps/ingress-routes.yaml`'s comments) |
 

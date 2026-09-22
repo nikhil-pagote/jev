@@ -15,7 +15,11 @@ spec:
     path: argocd-apps
     directory:
       recurse: true
-      exclude: "**/chart/**,**/values/**"
+      # Allowlist, not a denylist: vendored charts are an open-ended tree
+      # (e.g. grafana/chart/ci/*.yaml ships test-fixture "values" files that
+      # aren't valid manifests) — safer to name exactly what we want than to
+      # try to exclude everything we don't.
+      include: "{*/app.yaml,ingress-routes.yaml}"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
