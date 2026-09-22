@@ -24,7 +24,16 @@ singleBinary:
     enabled: true
     size: 5Gi
 
-# SimpleScalable/Distributed-only components — unused in SingleBinary mode.
+# SimpleScalable/Distributed-only components — the chart still defaults
+# these to 3 replicas each even in SingleBinary mode, which its own
+# validate.yaml rejects ("more than zero replicas configured for both the
+# single binary and simple scalable targets") — zero them out explicitly.
+write:
+  replicas: 0
+read:
+  replicas: 0
+backend:
+  replicas: 0
 minio:
   enabled: false
 gateway:
