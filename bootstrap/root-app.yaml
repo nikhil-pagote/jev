@@ -29,3 +29,10 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      # ArgoCD validates every resource in the manifest set up front,
+      # before applying anything — sync-waves alone don't defer that
+      # validation. Without this, the traefik.io/IngressRoute and
+      # Middleware CRs in ingress-routes.yaml (wave 1) fail validation
+      # before the traefik child Application (wave 0, which installs
+      # those CRDs) ever gets applied, and the whole sync fails outright.
+      - SkipDryRunOnMissingResource=true
