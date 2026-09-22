@@ -2,11 +2,19 @@
 # namespace — avoids the cross-namespace backend restriction a plain
 # networking.k8s.io/v1 Ingress would hit. All routed off the single
 # Traefik "web" entrypoint (NodePort 30080).
+#
+# sync-wave: "1" (later than the traefik Application's wave "0") — these
+# objects are IngressRoute/Middleware CRs, whose CRDs are installed by the
+# traefik Helm chart itself. Without the later wave, ArgoCD tries to apply
+# these in the same pass as creating the traefik child Application, before
+# its chart (and CRDs) have actually synced.
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
   name: strip-grafana-prefix
   namespace: observability
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   stripPrefix:
     prefixes:
@@ -17,6 +25,8 @@ kind: IngressRoute
 metadata:
   name: grafana
   namespace: observability
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   entryPoints:
     - web
@@ -34,6 +44,8 @@ kind: Middleware
 metadata:
   name: strip-prometheus-prefix
   namespace: observability
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   stripPrefix:
     prefixes:
@@ -44,6 +56,8 @@ kind: IngressRoute
 metadata:
   name: prometheus
   namespace: observability
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   entryPoints:
     - web
@@ -64,6 +78,8 @@ kind: IngressRoute
 metadata:
   name: jaeger
   namespace: observability
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   entryPoints:
     - web
@@ -81,6 +97,8 @@ kind: IngressRoute
 metadata:
   name: argocd
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   entryPoints:
     - web
@@ -98,6 +116,8 @@ kind: Middleware
 metadata:
   name: traefik-dashboard-redirect
   namespace: traefik
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   redirectRegex:
     regex: ^.*/traefik$
@@ -108,6 +128,8 @@ kind: IngressRoute
 metadata:
   name: traefik-dashboard
   namespace: traefik
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   entryPoints:
     - web
@@ -130,6 +152,8 @@ kind: Middleware
 metadata:
   name: strip-hubble-prefix
   namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   stripPrefix:
     prefixes:
@@ -140,6 +164,8 @@ kind: IngressRoute
 metadata:
   name: hubble-ui
   namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   entryPoints:
     - web
