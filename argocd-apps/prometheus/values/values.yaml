@@ -2,6 +2,11 @@ server:
   persistentVolume:
     size: 4Gi
   retention: "6h" # short retention — this is a POC, not a long-lived cluster
+  # --web.route-prefix=/prometheus so Prometheus's own internal redirects
+  # (e.g. "/" -> "/query") are prefix-aware. Path-only, no host needed —
+  # matches the "don't strip, app handles its own subpath" pattern used
+  # for Grafana/Jaeger/ArgoCD (see argocd-apps/ingress-routes/routes.yaml).
+  prefixURL: /prometheus
 
 # Out of scope for this POC — no alert routing configured.
 alertmanager:

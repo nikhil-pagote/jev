@@ -8,18 +8,13 @@
 # traefik Helm chart itself. Without the later wave, ArgoCD tries to apply
 # these in the same pass as creating the traefik child Application, before
 # its chart (and CRDs) have actually synced.
-apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: strip-grafana-prefix
-  namespace: observability
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
-spec:
-  stripPrefix:
-    prefixes:
-      - /grafana
----
+# Grafana is configured with server.serve_from_sub_path: true (see
+# argocd-apps/grafana/values/values.yaml), which means it expects the
+# `/grafana` prefix preserved in the request path — same reasoning as
+# Jaeger/ArgoCD below: do NOT strip. Stripping here caused Grafana to
+# receive "/" instead of "/grafana/", which made it issue its own
+# canonical-redirect using its statically configured (and here, wrong for
+# a dynamic node IP) root_url host.
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -33,24 +28,14 @@ spec:
   routes:
     - match: PathPrefix(`/grafana`)
       kind: Rule
-      middlewares:
-        - name: strip-grafana-prefix
       services:
         - name: grafana
           port: 80
 ---
-apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: strip-prometheus-prefix
-  namespace: observability
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
-spec:
-  stripPrefix:
-    prefixes:
-      - /prometheus
----
+# Prometheus is configured with server.prefixURL: /prometheus (--web.route-prefix;
+# see argocd-apps/prometheus/values/values.yaml) so it expects the
+# `/prometheus` prefix preserved — same reasoning as Grafana/Jaeger/ArgoCD:
+# do NOT strip.
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -64,8 +49,6 @@ spec:
   routes:
     - match: PathPrefix(`/prometheus`)
       kind: Rule
-      middlewares:
-        - name: strip-prometheus-prefix
       services:
         - name: prometheus-server
           port: 80

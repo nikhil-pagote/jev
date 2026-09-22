@@ -5,3 +5,6 @@ kubeconfig
 
 # OS cruft
 .DS_Store
+
+# accidental shell/process core dumps
+core.[0-9]*

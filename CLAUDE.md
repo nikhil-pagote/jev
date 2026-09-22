@@ -67,9 +67,12 @@ those CRDs exist.
 
 ## Key constraints
 
-- Jaeger (`base_path: /jaeger`) and ArgoCD (`--rootpath=/argocd`) handle
-  their own subpath — their `IngressRoute`s must NOT strip the prefix.
-  Grafana and Hubble UI need the prefix stripped instead (see comments in
+- Grafana (`serve_from_sub_path: true`), Prometheus (`--web.route-prefix`),
+  Jaeger (`base_path: /jaeger`), and ArgoCD (`--rootpath=/argocd`) all
+  handle their own subpath — their `IngressRoute`s must NOT strip the
+  prefix, or the app issues its own canonical-redirect using a static
+  (often wrong, for a dynamic node IP) host. Only Hubble UI (a plain SPA
+  with no subpath awareness) needs the prefix stripped (see comments in
   `argocd-apps/ingress-routes/routes.yaml`).
 - OTel Collector uses the **contrib** image (`otelcol-contrib`) — the
   `prometheus` exporter isn't in the core image.
