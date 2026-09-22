@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: traefik
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    app.kubernetes.io/part-of: jev-observability-stack
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/nikhil-pagote/jev.git
+    targetRevision: HEAD
+    path: argocd-apps/traefik/chart
+    helm:
+      valueFiles:
+        - ../values/values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: traefik
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

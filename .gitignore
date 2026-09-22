@@ -1,0 +1,7 @@
+# kubeconfig / local state
+kubeconfig
+*.kubeconfig
+.kube/
+
+# OS cruft
+.DS_Store

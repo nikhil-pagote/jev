@@ -1,0 +1,48 @@
+mode: deployment
+
+# contrib image needed for the "prometheus" exporter (metrics fan-out)
+image:
+  repository: otel/opentelemetry-collector-contrib
+command:
+  name: otelcol-contrib
+
+ports:
+  prometheus:
+    enabled: true
+    containerPort: 8889
+    servicePort: 8889
+    protocol: TCP
+
+# Picked up by the Prometheus chart's default kubernetes-pods scrape job.
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8889"
+
+config:
+  exporters:
+    otlp/jaeger:
+      endpoint: jaeger.observability.svc.cluster.local:4317
+      tls:
+        insecure: true
+    # Loki 3.x+ native OTLP logs endpoint — no dedicated "loki" exporter needed.
+    otlphttp/loki:
+      endpoint: http://loki.observability.svc.cluster.local:3100/otlp
+      tls:
+        insecure: true
+    prometheus:
+      endpoint: ${env:MY_POD_IP}:8889
+
+  service:
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [otlp/jaeger]
+      metrics:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [prometheus]
+      logs:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [otlphttp/loki]

@@ -1,0 +1,22 @@
+adminUser: admin
+adminPassword: admin123
+
+grafana.ini:
+  server:
+    domain: localhost
+    root_url: "%(protocol)s://%(domain)s:30080/grafana/"
+    serve_from_sub_path: true
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus-server.observability.svc.cluster.local:80
+        isDefault: true
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://loki.observability.svc.cluster.local:3100

@@ -1,0 +1,8 @@
+server:
+  persistentVolume:
+    size: 4Gi
+  retention: "6h" # short retention — this is a POC, not a long-lived cluster
+
+# Out of scope for this POC — no alert routing configured.
+alertmanager:
+  enabled: false

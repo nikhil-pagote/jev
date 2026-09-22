@@ -1,0 +1,25 @@
+deployment:
+  replicas: 1
+
+service:
+  spec:
+    type: NodePort
+
+ports:
+  web:
+    nodePort: 30080
+  traefik:
+    # Expose the internal API/dashboard port so our own IngressRoute
+    # (argocd-apps/ingress-routes.yaml) can route /traefik to it.
+    expose:
+      default: true
+
+api:
+  dashboard: true
+  insecure: true
+
+ingressRoute:
+  dashboard:
+    # We manage a single centralized IngressRoute for every UI ourselves,
+    # in argocd-apps/ingress-routes.yaml — don't let the chart create its own.
+    enabled: false

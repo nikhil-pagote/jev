@@ -1,0 +1,153 @@
+# One Traefik IngressRoute per UI, each declared in its target's own
+# namespace — avoids the cross-namespace backend restriction a plain
+# networking.k8s.io/v1 Ingress would hit. All routed off the single
+# Traefik "web" entrypoint (NodePort 30080).
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-grafana-prefix
+  namespace: observability
+spec:
+  stripPrefix:
+    prefixes:
+      - /grafana
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grafana
+  namespace: observability
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: PathPrefix(`/grafana`)
+      kind: Rule
+      middlewares:
+        - name: strip-grafana-prefix
+      services:
+        - name: grafana
+          port: 80
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-prometheus-prefix
+  namespace: observability
+spec:
+  stripPrefix:
+    prefixes:
+      - /prometheus
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: prometheus
+  namespace: observability
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: PathPrefix(`/prometheus`)
+      kind: Rule
+      middlewares:
+        - name: strip-prometheus-prefix
+      services:
+        - name: prometheus-server
+          port: 80
+---
+# Jaeger Query is configured with its own base_path: /jaeger (see
+# argocd-apps/jaeger/values/values.yaml) — do NOT strip the prefix here,
+# Jaeger serves its own assets expecting it.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: jaeger
+  namespace: observability
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: PathPrefix(`/jaeger`)
+      kind: Rule
+      services:
+        - name: jaeger
+          port: 16686
+---
+# ArgoCD server is started with --insecure --rootpath=/argocd (see the
+# `argocd` Makefile target) — same reasoning as Jaeger: don't strip.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: PathPrefix(`/argocd`)
+      kind: Rule
+      services:
+        - name: argocd-server
+          port: 80
+---
+# Traefik dashboard/API live at their own fixed paths (/dashboard, /api);
+# /traefik is just a convenience redirect into /dashboard/.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: traefik-dashboard-redirect
+  namespace: traefik
+spec:
+  redirectRegex:
+    regex: ^.*/traefik$
+    replacement: /dashboard/
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: traefik-dashboard
+  namespace: traefik
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: PathPrefix(`/dashboard`) || PathPrefix(`/api`)
+      kind: Rule
+      services:
+        - name: traefik
+          port: 8080
+    - match: Path(`/traefik`)
+      kind: Rule
+      middlewares:
+        - name: traefik-dashboard-redirect
+      services:
+        - name: traefik
+          port: 8080
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-hubble-prefix
+  namespace: kube-system
+spec:
+  stripPrefix:
+    prefixes:
+      - /hubble
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: hubble-ui
+  namespace: kube-system
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: PathPrefix(`/hubble`)
+      kind: Rule
+      middlewares:
+        - name: strip-hubble-prefix
+      services:
+        - name: hubble-ui
+          port: 80
