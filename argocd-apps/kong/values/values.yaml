@@ -1,0 +1,47 @@
+# DB-less (env.database: "off" is already this chart's own default —
+# listed here only for clarity, not to override anything). Kong's own
+# Helm automation for admin_gui_listen is still gated behind the legacy
+# `enterprise.enabled` flag even though Kong Gateway 3.9 itself supports
+# OSS Kong Manager natively (verified by reading
+# templates/_helpers.tpl in the vendored chart) — so it's set directly
+# here instead of via enterprise.enabled, which would pull in unrelated
+# enterprise-only templating we don't want or have a license for.
+env:
+  database: "off"
+  admin_gui_listen: "0.0.0.0:8002"
+
+ingressController:
+  enabled: true
+
+proxy:
+  type: NodePort
+  http:
+    nodePort: 30080
+  tls:
+    enabled: false
+
+admin:
+  enabled: true
+  http:
+    enabled: true
+    nodePort: 30001
+  tls:
+    enabled: false
+
+manager:
+  http:
+    nodePort: 30002
+  tls:
+    enabled: false
+
+# Developer Portal — unused, don't stand up its NodePort Service.
+portal:
+  enabled: false
+
+# Picked up by the Prometheus chart's default kubernetes-pods scrape
+# job (confirmed in argocd-apps/prometheus/chart/values.yaml) — same
+# pattern already used for the OTel Collector in this repo. Kong's
+# status listener (container port 8100) is always on by default.
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8100"
