@@ -1,0 +1,155 @@
+# One plain networking.k8s.io/v1 Ingress per UI, each in its target's
+# own namespace — an Ingress's backend Service must live in the same
+# namespace as the Ingress object itself, so this avoids any
+# cross-namespace question entirely. All routed through Kong's single
+# proxy (NodePort 30080, ingressClassName: kong).
+#
+# konghq.com/strip-path: "false" for apps that already handle their own
+# subpath (Grafana serve_from_sub_path, Prometheus --web.route-prefix,
+# Jaeger base_path, ArgoCD --rootpath) — stripping would make them
+# issue their own canonical-redirect using a statically configured host
+# that isn't reachable (see CLAUDE.md "Key constraints"). Only Hubble UI
+# (a plain SPA, no subpath awareness) gets "true".
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana
+  namespace: observability
+  annotations:
+    konghq.com/strip-path: "false"
+spec:
+  ingressClassName: kong
+  rules:
+    - http:
+        paths:
+          - path: /grafana
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 80
+---
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: rate-limit-prometheus
+  namespace: observability
+plugin: rate-limiting
+config:
+  minute: 60
+  policy: local
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: prometheus
+  namespace: observability
+  annotations:
+    konghq.com/strip-path: "false"
+    konghq.com/plugins: rate-limit-prometheus
+spec:
+  ingressClassName: kong
+  rules:
+    - http:
+        paths:
+          - path: /prometheus
+            pathType: Prefix
+            backend:
+              service:
+                name: prometheus-server
+                port:
+                  number: 80
+---
+# Jaeger Query is configured with its own base_path: /jaeger (see
+# argocd-apps/jaeger/values/values.yaml) — do NOT strip the prefix here.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jaeger
+  namespace: observability
+  annotations:
+    konghq.com/strip-path: "false"
+spec:
+  ingressClassName: kong
+  rules:
+    - http:
+        paths:
+          - path: /jaeger
+            pathType: Prefix
+            backend:
+              service:
+                name: jaeger
+                port:
+                  number: 16686
+---
+# ArgoCD server is started with --insecure --rootpath=/argocd (see the
+# `argocd` Makefile target) — same reasoning as Jaeger: don't strip.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd
+  namespace: argocd
+  annotations:
+    konghq.com/strip-path: "false"
+spec:
+  ingressClassName: kong
+  rules:
+    - http:
+        paths:
+          - path: /argocd
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hubble-ui
+  namespace: kube-system
+  annotations:
+    konghq.com/strip-path: "true"
+spec:
+  ingressClassName: kong
+  rules:
+    - http:
+        paths:
+          - path: /hubble
+            pathType: Prefix
+            backend:
+              service:
+                name: hubble-ui
+                port:
+                  number: 80
+---
+# Global plugins need BOTH the "global" label AND the ingress-class
+# annotation below to actually apply gateway-wide — the label alone is
+# not sufficient (verified against Kong's own KongClusterPlugin
+# behavior).
+apiVersion: configuration.konghq.com/v1
+kind: KongClusterPlugin
+metadata:
+  name: prometheus
+  annotations:
+    kubernetes.io/ingress.class: kong
+  labels:
+    global: "true"
+plugin: prometheus
+---
+# Feeds Jaeger through the same OTel Collector pipeline every other
+# trace already uses — Kong doesn't replace Jaeger, it becomes another
+# span source. OTLP/HTTP only; this plugin doesn't speak gRPC.
+apiVersion: configuration.konghq.com/v1
+kind: KongClusterPlugin
+metadata:
+  name: opentelemetry
+  annotations:
+    kubernetes.io/ingress.class: kong
+  labels:
+    global: "true"
+plugin: opentelemetry
+config:
+  endpoint: "http://opentelemetry-collector.observability.svc.cluster.local:4318/v1/traces"
