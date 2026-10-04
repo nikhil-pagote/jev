@@ -24,3 +24,26 @@ datasources:
         type: loki
         access: proxy
         url: http://loki.observability.svc.cluster.local:3100
+
+# Dashboards to auto-provision from grafana.com, so re-adding them isn't
+# a manual UI step after every fresh cluster. The chart downloads each
+# by gnetId/revision into an initContainer-mounted volume at deploy time.
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: default
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+
+dashboards:
+  default:
+    k8s-dashboard:
+      gnetId: 15661
+      revision: 2
+      datasource: Prometheus
