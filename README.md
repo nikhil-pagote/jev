@@ -22,32 +22,7 @@ needed again.
 
 ### Data flow
 
-<svg viewBox="0 0 560 330" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, Helvetica, Arial, sans-serif">
-  <defs>
-    <marker id="df-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#333"/>
-    </marker>
-  </defs>
-  <rect x="170" y="10" width="220" height="36" rx="6" fill="#eef2ff" stroke="#4453a8"/>
-  <text x="280" y="33" text-anchor="middle" font-size="13" fill="#1a1a2e">App (OTLP :4317/4318)</text>
-  <rect x="150" y="90" width="260" height="36" rx="6" fill="#fff7ed" stroke="#c2660f"/>
-  <text x="280" y="113" text-anchor="middle" font-size="13" fill="#7a3a0c">OTel Collector (Deployment)</text>
-  <rect x="40" y="180" width="150" height="40" rx="6" fill="#ecfdf5" stroke="#15803d"/>
-  <text x="115" y="204" text-anchor="middle" font-size="13" fill="#14532d">Prometheus</text>
-  <rect x="205" y="180" width="150" height="40" rx="6" fill="#ecfdf5" stroke="#15803d"/>
-  <text x="280" y="204" text-anchor="middle" font-size="13" fill="#14532d">Jaeger</text>
-  <rect x="370" y="180" width="150" height="40" rx="6" fill="#ecfdf5" stroke="#15803d"/>
-  <text x="445" y="204" text-anchor="middle" font-size="13" fill="#14532d">Loki</text>
-  <rect x="205" y="270" width="150" height="40" rx="6" fill="#faf5ff" stroke="#7e22ce"/>
-  <text x="280" y="294" text-anchor="middle" font-size="13" fill="#581c87">Grafana</text>
-  <line x1="280" y1="46" x2="280" y2="90" stroke="#333" stroke-width="1.5" marker-end="url(#df-arrow)"/>
-  <line x1="280" y1="126" x2="115" y2="180" stroke="#333" stroke-width="1.3" marker-end="url(#df-arrow)"/>
-  <line x1="280" y1="126" x2="280" y2="180" stroke="#333" stroke-width="1.3" marker-end="url(#df-arrow)"/>
-  <line x1="280" y1="126" x2="445" y2="180" stroke="#333" stroke-width="1.3" marker-end="url(#df-arrow)"/>
-  <line x1="115" y1="220" x2="280" y2="270" stroke="#333" stroke-width="1.3" marker-end="url(#df-arrow)"/>
-  <line x1="280" y1="220" x2="280" y2="270" stroke="#333" stroke-width="1.3" marker-end="url(#df-arrow)"/>
-  <line x1="445" y1="220" x2="280" y2="270" stroke="#333" stroke-width="1.3" marker-end="url(#df-arrow)"/>
-</svg>
+![Data flow: App to OTel Collector, fanning out to Prometheus/Jaeger/Loki, all feeding Grafana](docs/diagrams/data-flow.svg)
 
 ## Why Cilium comes before ArgoCD
 
