@@ -9,6 +9,16 @@
 env:
   database: "off"
   admin_gui_listen: "0.0.0.0:8002"
+  # Kong Manager's kconfig.js leaves ADMIN_API_URL empty by default, so
+  # its frontend JS falls back to building the admin API URL from
+  # window.location.hostname + ADMIN_API_PORT (8001) — but 8001 is only
+  # the pod's internal container port, not exposed via NodePort (the
+  # admin API's actual NodePort is 30001). Confirmed: port 8001 is
+  # unreachable externally, 30001 works. Setting this explicitly fixes
+  # the Kong Manager UI, which otherwise loads (HTTP 200) but can't
+  # reach the Admin API. The node IP is dynamic (current cluster:
+  # 10.89.0.4) — this value needs updating if the node IP changes.
+  admin_gui_api_url: "http://10.89.0.4:30001"
 
 ingressController:
   enabled: true
