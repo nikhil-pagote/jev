@@ -14,7 +14,11 @@ datasources:
       - name: Prometheus
         type: prometheus
         access: proxy
-        url: http://prometheus-server.observability.svc.cluster.local:80
+        # Prometheus runs with --web.route-prefix=/prometheus (see
+        # argocd-apps/prometheus/values/values.yaml) — every API path,
+        # not just the web UI, requires this prefix, or Grafana's
+        # queries 404.
+        url: http://prometheus-server.observability.svc.cluster.local:80/prometheus
         isDefault: true
       - name: Loki
         type: loki
