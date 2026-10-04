@@ -64,8 +64,9 @@ they follow this shape:
 | Prometheus | `/prometheus` |
 | Jaeger | `/jaeger` |
 | ArgoCD | `/argocd` (admin / `kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' \| base64 -d`) |
-| Hubble UI | `/hubble` |
 | Kong Manager | separate NodePort `30002` (read-only, DB-less) — config/route browsing |
+| Kong Admin API | separate NodePort `30001` (read-only, DB-less) |
+| Hubble UI | separate NodePort `30003` — its build hardcodes a root `<base href=/>`, so it can't live behind Kong's path-prefix routing like the others |
 
 ## Repo layout
 
@@ -109,6 +110,7 @@ git push
 | `root` Application shows raw chart files as resources | `bootstrap/root-app.yaml`'s `directory.include` allowlist isn't matching a new file you added |
 | `/grafana` 404s or loads with broken CSS | Kong's `Ingress` not synced yet, or `serve_from_sub_path`/`root_url` mismatch |
 | `/jaeger` or `/argocd` broken paths | Their `base_path`/`rootpath` config must match the `Ingress`'s un-stripped prefix (`konghq.com/strip-path: "false"`; see `argocd-apps/ingress-routes/routes.yaml`'s comments) |
+| Hubble UI loads blank, JS/CSS 404 | Don't route it through Kong's `/hubble` prefix — its build hardcodes `<base href=/>`, so asset requests always hit the proxy's bare root. It's exposed on its own NodePort (`30003`) instead, same as Kong Manager/Admin API |
 
 For a guided diagnosis, use the `k8s-troubleshooter` subagent
 (`.claude/agents/k8s-troubleshooter.md`).

@@ -4,6 +4,7 @@ NAMESPACE_CILIUM := kube-system
 KONG_PROXY_NODEPORT := 30080
 KONG_MANAGER_NODEPORT := 30002
 KONG_ADMIN_NODEPORT := 30001
+HUBBLE_UI_NODEPORT := 30003
 
 .PHONY: cluster cilium argocd bootstrap all urls destroy
 
@@ -29,6 +30,8 @@ cilium:
 		--set k8sServicePort=$(API_PORT) \
 		--set hubble.relay.enabled=true \
 		--set hubble.ui.enabled=true \
+		--set hubble.ui.service.type=NodePort \
+		--set hubble.ui.service.nodePort=$(HUBBLE_UI_NODEPORT) \
 		--wait --timeout 10m
 	kubectl get nodes
 
@@ -52,9 +55,9 @@ urls:
 	echo "  Prometheus    http://$$NODE_IP:$(KONG_PROXY_NODEPORT)/prometheus"; \
 	echo "  Jaeger        http://$$NODE_IP:$(KONG_PROXY_NODEPORT)/jaeger"; \
 	echo "  ArgoCD        http://$$NODE_IP:$(KONG_PROXY_NODEPORT)/argocd"; \
-	echo "  Hubble        http://$$NODE_IP:$(KONG_PROXY_NODEPORT)/hubble"; \
 	echo "  Kong Manager  http://$$NODE_IP:$(KONG_MANAGER_NODEPORT)/ (read-only, DB-less)"; \
-	echo "  Kong Admin    http://$$NODE_IP:$(KONG_ADMIN_NODEPORT)/ (Admin API, read-only, DB-less)"
+	echo "  Kong Admin    http://$$NODE_IP:$(KONG_ADMIN_NODEPORT)/ (Admin API, read-only, DB-less)"; \
+	echo "  Hubble UI     http://$$NODE_IP:$(HUBBLE_UI_NODEPORT)/ (own NodePort — its build hardcodes a root base path, can't live behind Kong's /hubble prefix)"
 
 destroy:
 	sudo KIND_EXPERIMENTAL_PROVIDER=podman kind delete cluster --name $(CLUSTER_NAME)

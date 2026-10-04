@@ -54,7 +54,11 @@ same `<app>/app.yaml` shape, so root's own sync is always just
 **Ingress:** plain `NodePort` (no `extraPortMappings`) — reached via the
 node's container IP. Proxy on NodePort `30080` (unchanged from the old
 Traefik setup), Kong Manager on NodePort `30002`, Admin API separately
-on NodePort `30001` — two distinct ports, not one shared port.
+on NodePort `30001` — two distinct ports, not one shared port. Hubble UI
+gets its own NodePort too (`30003`, set via `make cilium`'s
+`hubble.ui.service.*` Helm flags — Cilium isn't GitOps-managed) — its
+build hardcodes a root `<base href=/>`, so it can't live behind Kong's
+path-prefix routing like the other UIs.
 Path-based routing via the `ingress-routes` child Application
 (`argocd-apps/ingress-routes/`, plain `Ingress` + `KongPlugin`/
 `KongClusterPlugin` objects, one `Ingress` per UI, each in its target's
@@ -76,8 +80,11 @@ those CRDs exist. Full design: `docs/superpowers/specs/2026-10-04-kong-ingress-g
   handle their own subpath — their `Ingress` objects must set
   `konghq.com/strip-path: "false"`, or the app issues its own
   canonical-redirect using a static (often wrong, for a dynamic node IP)
-  host. Only Hubble UI (a plain SPA with no subpath awareness) gets
-  `"true"` (see comments in `argocd-apps/ingress-routes/routes.yaml`).
+  host (see comments in `argocd-apps/ingress-routes/routes.yaml`). Hubble
+  UI has no `Ingress` at all — it's a plain SPA whose build hardcodes a
+  root `<base href=/>`, so its asset requests always hit the proxy's bare
+  root regardless of strip-path; it gets its own NodePort instead (see
+  "Ingress" above).
 - Kong runs **DB-less** (`env.database: "off"`) — config comes entirely
   from `Ingress`/`KongPlugin`/`KongClusterPlugin` CRs via the bundled
   Ingress Controller, not Admin API writes. Kong Manager (bundled since

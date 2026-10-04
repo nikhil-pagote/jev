@@ -75,7 +75,14 @@ Traefik `IngressRoute`s did, by being declared alongside their target.
     (`--web.route-prefix`), Jaeger (`base_path`), ArgoCD (`--rootpath`)
     — they already own their subpath, exactly the same reasoning that
     governed the Traefik `IngressRoute`s.
-  - `"true"` for Hubble UI — a plain SPA with no subpath awareness.
+  - ~~`"true"` for Hubble UI~~ — **correction, 2026-10-04 post-merge:**
+    strip-path doesn't fix Hubble UI. Its build hardcodes a root
+    `<base href=/>`, so the browser requests its JS/CSS bundles at the
+    proxy's bare root no matter what Kong does to the `/hubble` prefix —
+    those requests never even reach a `/hubble`-matching route to begin
+    with. Hubble UI has no `Ingress` here at all; it's exposed on its
+    own NodePort (`30003`, via `make cilium`'s `hubble.ui.service.*`
+    flags) instead, same pattern as Kong Manager/Admin API.
 - No Kong-equivalent replaces the old `/traefik` dashboard route.
 
 ## API-gateway plugins
@@ -145,9 +152,12 @@ Before (or as part of) applying the Kong changes:
 2. `kubectl get nodes` and existing apps (`grafana`, `prometheus`,
    `jaeger`, `loki`, `opentelemetry-collector`) unaffected — this is an
    ingress-layer swap, nothing else should need to change.
-3. Every UI path returns `200` through Kong's proxy on `30080`, same as
-   the current Traefik verification did (`/grafana/login`,
-   `/prometheus/query`, `/jaeger/`, `/argocd/`, `/hubble`).
+3. Every UI path returns `200` through Kong's proxy on `30080`
+   (`/grafana/login`, `/prometheus/query`, `/jaeger/`, `/argocd/`).
+   Hubble UI is verified separately on its own NodePort (`30003`) — see
+   the strip-path correction above; checking `200` on `/hubble` alone
+   isn't sufficient, since the base HTML loads fine even when every
+   asset it references 404s.
 4. Rate limit visibly triggers: hit `/prometheus` more than 60 times in
    a minute, confirm a `429` with Kong's rate-limit headers
    (`X-RateLimit-*`).

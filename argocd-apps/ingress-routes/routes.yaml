@@ -8,8 +8,13 @@
 # subpath (Grafana serve_from_sub_path, Prometheus --web.route-prefix,
 # Jaeger base_path, ArgoCD --rootpath) — stripping would make them
 # issue their own canonical-redirect using a statically configured host
-# that isn't reachable (see CLAUDE.md "Key constraints"). Only Hubble UI
-# (a plain SPA, no subpath awareness) gets "true".
+# that isn't reachable (see CLAUDE.md "Key constraints").
+#
+# Hubble UI has no Ingress here: its built HTML hardcodes <base href=/>,
+# so the browser requests its JS/CSS bundles at the proxy's bare root
+# regardless of strip-path — Kong has no route for those, so the page
+# always loaded blank. It's exposed on its own NodePort (30003) instead,
+# the same pattern already used for Kong Manager/Admin API.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -102,26 +107,6 @@ spec:
             backend:
               service:
                 name: argocd-server
-                port:
-                  number: 80
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: hubble-ui
-  namespace: kube-system
-  annotations:
-    konghq.com/strip-path: "true"
-spec:
-  ingressClassName: kong
-  rules:
-    - http:
-        paths:
-          - path: /hubble
-            pathType: Prefix
-            backend:
-              service:
-                name: hubble-ui
                 port:
                   number: 80
 ---
