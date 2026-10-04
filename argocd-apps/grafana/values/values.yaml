@@ -55,3 +55,76 @@ dashboards:
       datasource:
         - name: DS__VICTORIAMETRICS-PROD-ALL
           value: Prometheus
+
+    # CoreDNS — NOTE: this dashboard's $instance variable hardcodes
+    # `job="coredns"`, but this repo's Prometheus auto-discovers CoreDNS
+    # via its generic `kubernetes-service-endpoints` job, not a job
+    # literally named "coredns" — panels will stay empty until that's
+    # addressed separately (a dedicated scrape job, or similar).
+    coredns:
+      gnetId: 14981
+      revision: 2
+      datasource: Prometheus
+
+    # Node Exporter Full — uses a live "$ds_prometheus" datasource
+    # variable (not a static placeholder), so it self-resolves to our
+    # one Prometheus datasource with no substitution needed.
+    node-exporter-full:
+      gnetId: 1860
+      revision: 45
+
+    # ArgoCD — also a live "$datasource" variable (self-resolving).
+    # NOTE: ArgoCD's own metrics endpoint isn't scraped by Prometheus
+    # in this repo yet (argocd_app_info has zero series) — panels will
+    # stay empty until that scrape target is added separately.
+    argocd:
+      gnetId: 14584
+      revision: 1
+
+    # Loki stack monitoring (Promtail, Loki) — NOTE: this repo has no
+    # Promtail (logs reach Loki via native OTLP from the OTel
+    # Collector instead), so every Promtail-sourced panel will stay
+    # empty regardless of datasource wiring. Wired up anyway in case
+    # any Loki-server-only panels still show something.
+    loki-stack-monitoring:
+      gnetId: 14055
+      revision: 5
+      datasource:
+        - name: DS_PROMETHEUS
+          value: Prometheus
+        - name: DS_LOKI
+          value: Loki
+
+    # kube-state-metrics-v2 — mixes two placeholder styles: row panels
+    # use "${DS_PROMETHEUS}" directly, others use a "constant" template
+    # variable holding "${VAR_DATASOURCE}" — both need substituting.
+    kube-state-metrics-v2:
+      gnetId: 13332
+      revision: 12
+      datasource:
+        - name: VAR_DATASOURCE
+          value: Prometheus
+        - name: DS_PROMETHEUS
+          value: Prometheus
+
+    # K8s / Storage / Volumes / Cluster — non-standard placeholder name.
+    k8s-storage-volumes-cluster:
+      gnetId: 11454
+      revision: 14
+      datasource:
+        - name: DS_OPENSHIFT_PROMETHEUS
+          value: Prometheus
+
+    # PolicyReport Details — NOTE: needs a policy-report exporter
+    # (e.g. Kyverno's policy-reporter) that isn't part of this stack;
+    # panels will stay empty until/unless that's added. Its datasource
+    # is the object-schema form ({"type":..., "uid": "${DS_PROMETHEUS}"})
+    # split across multiple lines, which the plain-string substitution
+    # below can't match (no trailing comma on the "datasource": line) —
+    # needs list form.
+    policyreport-details:
+      gnetId: 13995
+      revision: 5
+      datasource:
+        - name: DS_PROMETHEUS
+          value: Prometheus
