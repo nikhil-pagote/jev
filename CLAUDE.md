@@ -85,6 +85,21 @@ those CRDs exist. Full design: `docs/superpowers/specs/2026-10-04-kong-ingress-g
   root `<base href=/>`, so its asset requests always hit the proxy's bare
   root regardless of strip-path; it gets its own NodePort instead (see
   "Ingress" above).
+- Prometheus's `--web.route-prefix=/prometheus` applies to **every** API
+  path, not just the web UI — Grafana's Prometheus datasource URL
+  (`argocd-apps/grafana/values/values.yaml`) must include `/prometheus`,
+  or every query 404s. This bit Grafana's own queries silently, not just
+  the web UI redirect case above.
+- Grafana has **no persistent storage** (`persistence.enabled: false`,
+  the chart default) — community dashboards must be declared in
+  `argocd-apps/grafana/values/values.yaml`'s `dashboards:` block (an
+  initContainer downloads each by `gnetId`/`revision` on pod start) or
+  they're lost on the next pod restart. Each dashboard's panels reference
+  its datasource via one of several conventions (a plain `"${DS_X}"`
+  string, that placeholder inside an object's `uid` field — which the
+  chart's simple string-substitution silently fails to match — or a live
+  template variable that self-resolves); verify by downloading the raw
+  JSON and checking before assuming `datasource: Prometheus` is enough.
 - Kong runs **DB-less** (`env.database: "off"`) — config comes entirely
   from `Ingress`/`KongPlugin`/`KongClusterPlugin` CRs via the bundled
   Ingress Controller, not Admin API writes. Kong Manager (bundled since

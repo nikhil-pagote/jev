@@ -14,8 +14,8 @@ needed again.
 | Kind + Cilium | 3-node cluster (1 control-plane + 2 workers), Cilium CNI with full kube-proxy replacement, Hubble UI/Relay |
 | ArgoCD | GitOps reconciler — app-of-apps over `argocd-apps/` |
 | Kong | Ingress + API gateway, DB-less, path-based routing + rate-limiting/tracing plugins |
-| Prometheus | Metrics |
-| Grafana | Dashboards (Prometheus + Loki datasources) |
+| Prometheus | Metrics (served under `/prometheus` — `--web.route-prefix`, applies to every API path, not just the web UI) |
+| Grafana | Dashboards (Prometheus + Loki datasources, plus auto-provisioned community dashboards — see below) |
 | Loki | Logs (single-binary, filesystem storage) |
 | Jaeger | Traces (in-memory storage) |
 | OpenTelemetry Collector | OTLP ingestion, fans out to Prometheus/Jaeger/Loki |
@@ -100,6 +100,35 @@ git push
 # ArgoCD picks it up on its next poll — no kubectl/argocd command needed
 ```
 
+## Grafana dashboards
+
+Community dashboards (from grafana.com) are provisioned declaratively via
+`argocd-apps/grafana/values/values.yaml`'s `dashboards:` block — an
+initContainer downloads each by `gnetId`/`revision` on every pod start, so
+they survive a fresh cluster. **Grafana has no persistent storage in this
+POC** (`persistence.enabled: false`) — anything imported through the UI
+instead of this file is lost the next time the Grafana pod restarts.
+
+| Dashboard | ID | Shows real data? |
+|---|---|---|
+| K8S Dashboard | 15661 | Yes |
+| Node Exporter Full | 1860 | Yes |
+| kube-state-metrics-v2 | 13332 | Yes |
+| K8s / Storage / Volumes / Cluster | 11454 | Likely (depends on PVCs existing) |
+| CoreDNS | 14981 | No — its `$instance` variable hardcodes `job="coredns"`, but this repo's Prometheus discovers CoreDNS via the generic `kubernetes-service-endpoints` job instead |
+| ArgoCD | 14584 | No — ArgoCD's own metrics endpoint isn't scraped by Prometheus yet |
+| Loki stack monitoring (Promtail, Loki) | 14055 | No — needs Promtail, which this repo doesn't deploy (logs reach Loki via native OTLP from the OTel Collector instead) |
+| PolicyReport Details | 13995 | No — needs a policy-report exporter (e.g. Kyverno's) not in this stack |
+
+To add another one: find its `gnetId` on grafana.com, download its JSON
+(`https://grafana.com/api/dashboards/<id>/revisions/<rev>/download`) and
+check what its panels actually reference for `datasource` — community
+dashboards vary (a plain `"${DS_X}"` string, that same placeholder split
+across an object's `uid` field, or a live template variable that
+self-resolves). Add an entry under `dashboards.default` in
+`argocd-apps/grafana/values/values.yaml`, following the existing entries'
+comments for which substitution style applies.
+
 ## Troubleshooting
 
 | Symptom | Likely cause |
@@ -111,6 +140,8 @@ git push
 | `/grafana` 404s or loads with broken CSS | Kong's `Ingress` not synced yet, or `serve_from_sub_path`/`root_url` mismatch |
 | `/jaeger` or `/argocd` broken paths | Their `base_path`/`rootpath` config must match the `Ingress`'s un-stripped prefix (`konghq.com/strip-path: "false"`; see `argocd-apps/ingress-routes/routes.yaml`'s comments) |
 | Hubble UI loads blank, JS/CSS 404 | Don't route it through Kong's `/hubble` prefix — its build hardcodes `<base href=/>`, so asset requests always hit the proxy's bare root. It's exposed on its own NodePort (`30003`) instead, same as Kong Manager/Admin API |
+| Grafana panels show "404 Not Found" querying Prometheus | The Prometheus datasource URL must include the `/prometheus` route prefix (`argocd-apps/grafana/values/values.yaml`) — Prometheus's `--web.route-prefix` applies to every API path, not just the web UI |
+| An imported/provisioned dashboard shows no data, no error | Check the panel's `datasource` field (via the dashboard JSON, or Grafana's panel inspector) — a `${DS_X}`-style placeholder that never got substituted points at a datasource that doesn't exist, and fails silently instead of erroring. See "Grafana dashboards" above |
 
 For a guided diagnosis, use the `k8s-troubleshooter` subagent
 (`.claude/agents/k8s-troubleshooter.md`).
