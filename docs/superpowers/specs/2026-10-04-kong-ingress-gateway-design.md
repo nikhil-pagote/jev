@@ -51,8 +51,6 @@ learn Kong's Kubernetes-native operating model as part of this POC.
 
 ## Architecture
 
-```
-<?xml version="1.0" encoding="UTF-8"?>
 <svg viewBox="0 0 920 620" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, Helvetica, Arial, sans-serif">
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -129,7 +127,6 @@ learn Kong's Kubernetes-native operating model as part of this POC.
   <path d="M265,520 C265,560 180,560 150,560" fill="none" stroke="#888" stroke-width="1.3" stroke-dasharray="5,4" marker-end="url(#arrow-dashed)"/>
   <text x="140" y="545" font-size="10" fill="#888">Kong traffic dashboard</text>
 </svg>
-```
 
 Solid arrows are proxied HTTP requests; dashed arrows are the metrics
 scrape/visualization path. Every backend box keeps living in its own
