@@ -42,6 +42,8 @@ Collector.
   automatically, which requires ArgoCD to own the reconciliation of the
   `argocd-apps/` tree itself, not just the workloads inside it.
 - **No sample workload** — platform/stack only, tightest scope for this POC.
+  (Superseded — see "Planned additions" below: FastAPI/Axum/FastMCP apps
+  are coming later.)
 - **Charts vendored locally** (`argocd-apps/<app>/chart/`, pulled via
   `helm pull --untar`) rather than ArgoCD pointing at remote chart repos
   directly — mirrors the reference project's proven, reproducible pattern.
@@ -53,6 +55,32 @@ in short: `make all` brings up a working cluster where all six ArgoCD child
 apps show `Synced`/`Healthy`, every UI path returns HTTP 200, and editing a
 `values.yaml` + pushing to `main` is reflected in the cluster without any
 manual `kubectl` command.
+
+## Planned additions (not yet built)
+
+- **Sample apps**: FastAPI, Axum, and FastMCP services, added later —
+  this reverses the original "no sample workload" decision above, once
+  there's a concrete reason to (gating real APIs through Kong, giving
+  Jaeger/Prometheus/Loki real traffic to show, and giving an MCP server
+  something to call).
+- **Langfuse (full v3)** for LLM-specific observability (prompts,
+  completions, token/cost tracking) — complements Jaeger, doesn't
+  replace it (see the Langfuse-vs-Jaeger discussion this project had:
+  Jaeger is general distributed tracing, Langfuse is LLM-call-specific).
+  Decided to go with the real, current, production-shaped architecture
+  (Postgres + ClickHouse + Redis + MinIO via the `langfuse/langfuse-k8s`
+  Helm chart) rather than the lighter, Postgres-only Langfuse v2 — a
+  deliberate exception to this project's usual "avoid extra datastores"
+  pattern (DB-less Kong, filesystem Loki, in-memory Jaeger), made
+  knowingly given the real resource cost (~7+ CPU / 17+ GiB just for
+  Langfuse's backing stores) and extra cluster-wide prerequisites
+  (cert-manager + the ClickHouse Kubernetes Operator, installed once,
+  before `helm install`).
+- **Timing — deliberately deferred**: Langfuse goes in alongside
+  whichever of FastAPI/Axum/FastMCP lands first, not before. Same
+  reasoning the original "no sample workload" decision used — no point
+  standing up an LLM observability backend with nothing yet sending it
+  traces.
 
 ## Reference project
 
