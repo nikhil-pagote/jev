@@ -1,7 +1,8 @@
 CLUSTER_NAME := jev
 NAMESPACE_ARGOCD := argocd
 NAMESPACE_CILIUM := kube-system
-TRAEFIK_NODEPORT := 30080
+KONG_PROXY_NODEPORT := 30080
+KONG_MANAGER_NODEPORT := 30002
 
 .PHONY: cluster cilium argocd bootstrap all urls destroy
 
@@ -45,13 +46,13 @@ all: cluster cilium argocd bootstrap
 
 urls:
 	@NODE_IP=$$(kubectl get nodes jev-control-plane -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}'); \
-	echo "Node IP: $$NODE_IP  (Traefik NodePort: $(TRAEFIK_NODEPORT))"; \
-	echo "  Grafana     http://$$NODE_IP:$(TRAEFIK_NODEPORT)/grafana"; \
-	echo "  Prometheus  http://$$NODE_IP:$(TRAEFIK_NODEPORT)/prometheus"; \
-	echo "  Jaeger      http://$$NODE_IP:$(TRAEFIK_NODEPORT)/jaeger"; \
-	echo "  ArgoCD      http://$$NODE_IP:$(TRAEFIK_NODEPORT)/argocd"; \
-	echo "  Traefik     http://$$NODE_IP:$(TRAEFIK_NODEPORT)/traefik"; \
-	echo "  Hubble      http://$$NODE_IP:$(TRAEFIK_NODEPORT)/hubble"
+	echo "Node IP: $$NODE_IP  (Kong proxy NodePort: $(KONG_PROXY_NODEPORT), Kong Manager NodePort: $(KONG_MANAGER_NODEPORT))"; \
+	echo "  Grafana       http://$$NODE_IP:$(KONG_PROXY_NODEPORT)/grafana"; \
+	echo "  Prometheus    http://$$NODE_IP:$(KONG_PROXY_NODEPORT)/prometheus"; \
+	echo "  Jaeger        http://$$NODE_IP:$(KONG_PROXY_NODEPORT)/jaeger"; \
+	echo "  ArgoCD        http://$$NODE_IP:$(KONG_PROXY_NODEPORT)/argocd"; \
+	echo "  Hubble        http://$$NODE_IP:$(KONG_PROXY_NODEPORT)/hubble"; \
+	echo "  Kong Manager  http://$$NODE_IP:$(KONG_MANAGER_NODEPORT)/ (read-only, DB-less)"
 
 destroy:
 	sudo KIND_EXPERIMENTAL_PROVIDER=podman kind delete cluster --name $(CLUSTER_NAME)

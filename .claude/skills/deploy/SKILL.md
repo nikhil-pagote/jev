@@ -27,7 +27,7 @@ kubectl version --client 2>/dev/null && echo "kubectl: OK" || echo "kubectl: NOT
 helm version 2>/dev/null && echo "helm: OK" || echo "helm: NOT FOUND"
 
 missing=()
-for app in traefik prometheus grafana loki jaeger opentelemetry-collector; do
+for app in kong prometheus grafana loki jaeger opentelemetry-collector; do
   [ -f "argocd-apps/$app/chart/Chart.yaml" ] || missing+=("$app")
 done
 [ ${#missing[@]} -eq 0 ] \
@@ -79,7 +79,7 @@ drift.
 ```bash
 kubectl get applications -n argocd -w
 kubectl get pods -n observability -w
-kubectl get pods -n traefik -w
+kubectl get pods -n kong -w
 
-make urls   # prints the node IP + path map once Traefik is Ready
+make urls   # prints the node IP + path map once Kong is Ready
 ```

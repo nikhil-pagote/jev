@@ -4,14 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Container runtime
 
-**Podman** (rootless) — Docker is not used. kind talks to Podman via env vars
-in `.envrc`:
-```bash
-export KIND_EXPERIMENTAL_PROVIDER=podman
-export DOCKER_HOST="unix:///run/user/$(id -u)/podman/podman.sock"
-```
-Source it once per shell (`source .envrc`); verify the socket first:
-`systemctl --user status podman.socket`.
+**Podman**, but **rootful** (via `sudo`) for cluster lifecycle — Docker is
+not used. Cilium's eBPF/kube-proxy-replacement needs real host
+capabilities that rootless Podman's user namespace can't grant (confirmed
+the hard way: the bpf mount syscall, memlock rlimit, and bpffs directory
+permissions all failed in turn under rootless). `make cluster`/`make
+destroy` run `kind`/`podman` under `sudo` (see the Makefile); `kubectl`,
+`helm`, `cilium`, and `argocd` stay unprivileged — they only talk to the
+API server over the network via the default `~/.kube/config`, no special
+env needed. See `.envrc` for the exact reasoning.
 
 ## Bootstrap order (strict)
 
@@ -33,7 +34,7 @@ continuously — no further manual `kubectl apply` for anything under it.
 **GitOps layer** (`argocd-apps/`) — `bootstrap/root-app.yaml` is the
 app-of-apps root (`directory.recurse: true`, `include: "*/app.yaml"` — an
 allowlist, since excluding the open-ended vendored `chart/` trees by glob
-proved unreliable). Every child (`traefik`, `prometheus`, `grafana`,
+proved unreliable). Every child (`kong`, `prometheus`, `grafana`,
 `loki`, `jaeger`, `opentelemetry-collector`, `ingress-routes`) follows the
 same `<app>/app.yaml` shape, so root's own sync is always just
 `Application` objects. Helm-backed apps additionally have `chart/`
@@ -46,20 +47,22 @@ same `<app>/app.yaml` shape, so root's own sync is always just
 | Namespace | Contents |
 |---|---|
 | `kube-system` | Cilium, Hubble Relay/UI |
-| `traefik` | Traefik ingress (sync-wave 0 — deployed first) |
+| `kong` | Kong Gateway — ingress + API gateway, DB-less (sync-wave 0 — deployed first) |
 | `argocd` | ArgoCD server + application controller |
 | `observability` | Prometheus, Grafana, Jaeger, Loki, OTel Collector |
 
 **Ingress:** plain `NodePort` (no `extraPortMappings`) — reached via the
-node's container IP + NodePort `30080`, not `localhost`. Path-based routing
-via the `ingress-routes` child Application (`argocd-apps/ingress-routes/`,
-Traefik `IngressRoute`s, one per UI, each in its target's own namespace).
-It's a **separate** Application from the others on purpose — its
-`IngressRoute`/`Middleware` CRs depend on CRDs the `traefik` Application
-installs, and folding them into root's own sync made ArgoCD fail resource
-discovery for root's entire sync before `traefik` ever got applied. As its
-own Application, it simply retries on its own automated-sync cycle until
-those CRDs exist.
+node's container IP. Proxy on NodePort `30080` (unchanged from the old
+Traefik setup), Kong Manager + Admin API on a second NodePort `30002`.
+Path-based routing via the `ingress-routes` child Application
+(`argocd-apps/ingress-routes/`, plain `Ingress` + `KongPlugin`/
+`KongClusterPlugin` objects, one `Ingress` per UI, each in its target's
+own namespace). It's a **separate** Application from the others on
+purpose — its CRs depend on CRDs the `kong` Application installs, and
+folding them into root's own sync made ArgoCD fail resource discovery for
+root's entire sync before `kong` ever got applied. As its own
+Application, it simply retries on its own automated-sync cycle until
+those CRDs exist. Full design: `docs/superpowers/specs/2026-10-04-kong-ingress-gateway-design.md`.
 
 **Data flow:** Apps → OTel Collector (OTLP :4317/:4318) → Prometheus
 (metrics) + Jaeger (traces, OTLP :4317) + Loki (logs, native OTLP at
@@ -69,11 +72,15 @@ those CRDs exist.
 
 - Grafana (`serve_from_sub_path: true`), Prometheus (`--web.route-prefix`),
   Jaeger (`base_path: /jaeger`), and ArgoCD (`--rootpath=/argocd`) all
-  handle their own subpath — their `IngressRoute`s must NOT strip the
-  prefix, or the app issues its own canonical-redirect using a static
-  (often wrong, for a dynamic node IP) host. Only Hubble UI (a plain SPA
-  with no subpath awareness) needs the prefix stripped (see comments in
-  `argocd-apps/ingress-routes/routes.yaml`).
+  handle their own subpath — their `Ingress` objects must set
+  `konghq.com/strip-path: "false"`, or the app issues its own
+  canonical-redirect using a static (often wrong, for a dynamic node IP)
+  host. Only Hubble UI (a plain SPA with no subpath awareness) gets
+  `"true"` (see comments in `argocd-apps/ingress-routes/routes.yaml`).
+- Kong runs **DB-less** (`env.database: "off"`) — config comes entirely
+  from `Ingress`/`KongPlugin`/`KongClusterPlugin` CRs via the bundled
+  Ingress Controller, not Admin API writes. Kong Manager (bundled since
+  Gateway 3.4+) is therefore read-only here.
 - OTel Collector uses the **contrib** image (`otelcol-contrib`) — the
   `prometheus` exporter isn't in the core image.
 - Loki runs in `SingleBinary` mode with filesystem storage, not

@@ -13,7 +13,7 @@ needed again.
 |---|---|
 | Kind + Cilium | 3-node cluster (1 control-plane + 2 workers), Cilium CNI with full kube-proxy replacement, Hubble UI/Relay |
 | ArgoCD | GitOps reconciler — app-of-apps over `argocd-apps/` |
-| Traefik | Ingress, path-based routing on a single NodePort |
+| Kong | Ingress + API gateway, DB-less, path-based routing + rate-limiting/tracing plugins |
 | Prometheus | Metrics |
 | Grafana | Dashboards (Prometheus + Loki datasources) |
 | Loki | Logs (single-binary, filesystem storage) |
@@ -64,8 +64,8 @@ they follow this shape:
 | Prometheus | `/prometheus` |
 | Jaeger | `/jaeger` |
 | ArgoCD | `/argocd` (admin / `kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' \| base64 -d`) |
-| Traefik dashboard | `/traefik` (redirects to `/dashboard/`) |
 | Hubble UI | `/hubble` |
+| Kong Manager | separate NodePort `30002` (read-only, DB-less) — config/route browsing |
 
 ## Repo layout
 
@@ -75,11 +75,11 @@ they follow this shape:
 ├── scripts/cilium-api-endpoint.sh
 ├── bootstrap/root-app.yaml    # the one manual apply — app-of-apps root
 └── argocd-apps/
-    ├── traefik/ prometheus/ grafana/ loki/ jaeger/ opentelemetry-collector/
+    ├── kong/ prometheus/ grafana/ loki/ jaeger/ opentelemetry-collector/
     │   each: app.yaml (ArgoCD Application) + chart/ (vendored Helm chart)
     │   + values/values.yaml
     └── ingress-routes/        # a separate child Application (see CLAUDE.md
-        ├── app.yaml           # for why) — Traefik IngressRoute per UI
+        ├── app.yaml           # for why) — Kong Ingress + KongPlugin per UI
         └── routes.yaml
 ```
 
@@ -105,10 +105,10 @@ git push
 |---|---|
 | All nodes `NotReady` right after `make cluster` | Expected — Cilium isn't installed yet |
 | Cilium agent `CrashLoopBackOff`, apiserver connection errors | Wrong `k8sServiceHost`/`k8sServicePort` — re-run `scripts/cilium-api-endpoint.sh` |
-| Cilium agent `Init:CrashLoopBackOff`, `mount-bpf-fs` logs `permission denied` | Rootless Podman can't do the `mount -t bpf` syscall itself — already worked around via `kind-config.yaml`'s `extraMounts` (bind-mounts the host's bpffs) + `bpf.autoMount.enabled=false` in the `cilium` Makefile target |
+| Cilium `Init:CrashLoopBackOff`/`CrashLoopBackOff` (bpf mount, memlock rlimit, or bpffs permission errors) | Cluster was created under **rootless** Podman — Cilium's eBPF needs real host capabilities only rootful Podman grants. `make cluster` must run under `sudo` (see the Makefile) |
 | `root` Application shows raw chart files as resources | `bootstrap/root-app.yaml`'s `directory.include` allowlist isn't matching a new file you added |
-| `/grafana` 404s or loads with broken CSS | `IngressRoute` not synced yet, or `serve_from_sub_path`/`root_url` mismatch |
-| `/jaeger` or `/argocd` broken paths | Their `base_path`/`rootpath` config must match the IngressRoute's un-stripped prefix (see `argocd-apps/ingress-routes/routes.yaml`'s comments) |
+| `/grafana` 404s or loads with broken CSS | Kong's `Ingress` not synced yet, or `serve_from_sub_path`/`root_url` mismatch |
+| `/jaeger` or `/argocd` broken paths | Their `base_path`/`rootpath` config must match the `Ingress`'s un-stripped prefix (`konghq.com/strip-path: "false"`; see `argocd-apps/ingress-routes/routes.yaml`'s comments) |
 
 For a guided diagnosis, use the `k8s-troubleshooter` subagent
 (`.claude/agents/k8s-troubleshooter.md`).

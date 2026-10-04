@@ -1,5 +1,14 @@
 # Intent
 
+> **Superseded in part** — this is the original design intent and is kept
+> as a historical record. Two decisions below have since changed:
+> 1. **Ingress**: Traefik → **Kong** (ingress + API gateway). See
+>    `docs/superpowers/specs/2026-10-04-kong-ingress-gateway-design.md`
+>    for the full rationale.
+> 2. **Podman**: rootless → **rootful** (`sudo`) for cluster lifecycle —
+>    Cilium's eBPF needs real host capabilities rootless Podman's
+>    userns can't grant. See `CLAUDE.md`'s "Container runtime" section.
+
 ## What this is
 
 A local POC: a 3-node Kind cluster running Cilium as CNI, with ArgoCD

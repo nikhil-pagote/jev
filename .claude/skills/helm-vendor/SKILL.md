@@ -26,7 +26,7 @@ ls "argocd-apps/$app/chart"   # sanity check: Chart.yaml, templates/, values.yam
 
 If this is a **new** app (not just a version bump), also create
 `argocd-apps/$app/app.yaml` following the pattern in any existing app (e.g.
-`argocd-apps/traefik/app.yaml`): `Application` CRD, `source.path:
+`argocd-apps/prometheus/app.yaml`): `Application` CRD, `source.path:
 argocd-apps/$app/chart`, `helm.valueFiles: [../values/values.yaml]`,
 `syncPolicy.automated: {prune: true, selfHeal: true}`, `syncOptions:
 [CreateNamespace=true]`. And create `argocd-apps/$app/values/values.yaml`

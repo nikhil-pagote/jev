@@ -21,7 +21,9 @@ for f in argocd-apps/*/app.yaml; do
 done
 
 echo "--- ingress-routes ---"
-kubectl apply --dry-run=client -f argocd-apps/ingress-routes/routes.yaml
+[ -f argocd-apps/ingress-routes/routes.yaml ] \
+  && kubectl apply --dry-run=client -f argocd-apps/ingress-routes/routes.yaml \
+  || echo "routes.yaml not present yet (Kong ingress-routes pending implementation)"
 ```
 
 If `--strict` is passed, also lint every YAML file (excluding vendored
@@ -35,6 +37,6 @@ Report: list each file validated, flag any errors. If all pass, print
 "All manifests valid."
 
 Note: `--dry-run=client` validates locally without needing a running
-cluster; it does not catch CRD-dependent errors (e.g. `IngressRoute` needs
-Traefik's CRDs installed) — those only surface once the cluster is up and
-`traefik`'s Application has synced.
+cluster; it does not catch CRD-dependent errors (e.g. `KongPlugin` needs
+Kong's CRDs installed) — those only surface once the cluster is up and
+`kong`'s Application has synced.

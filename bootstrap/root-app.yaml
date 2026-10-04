@@ -3,14 +3,15 @@
 # values.yaml) are picked up and reconciled automatically, no further
 # manual apply needed.
 #
-# Every child (traefik, prometheus, grafana, loki, jaeger,
+# Every child (kong, prometheus, grafana, loki, jaeger,
 # opentelemetry-collector, ingress-routes) follows the same `<app>/app.yaml`
 # shape, so root's own manifest set is always just `Application` objects —
 # a kind the API server always recognizes. CRD-dependent raw resources
-# (Traefik's IngressRoute/Middleware) live in their own child Application
-# (ingress-routes) instead of being folded directly into root: bundling
-# them here made ArgoCD fail resource discovery for root's *entire* sync
-# before even applying the traefik Application that installs those CRDs.
+# (Kong's Ingress/KongPlugin/KongClusterPlugin) live in their own child
+# Application (ingress-routes) instead of being folded directly into root:
+# bundling them here made ArgoCD fail resource discovery for root's
+# *entire* sync before even applying the kong Application that installs
+# those CRDs.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

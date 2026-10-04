@@ -26,9 +26,13 @@ learn Kong's Kubernetes-native operating model as part of this POC.
   Admin API writes.
 - **API-gateway demo on existing routes**, not a new workload. This repo
   deliberately has no sample API (platform/stack only); inventing one
-  just to gate it would be scope creep. Two representative plugins
-  instead: `rate-limiting` on the Prometheus route, and a global
-  `prometheus` plugin for gateway metrics.
+  just to gate it would be scope creep. Three representative plugins
+  instead: `rate-limiting` on the Prometheus route, a global
+  `prometheus` plugin for gateway metrics, and a global `opentelemetry`
+  plugin so Kong's own gateway-hop spans flow into Jaeger through the
+  same OTel Collector path every other trace already uses — Kong
+  doesn't replace Jaeger (gateway vs. trace-storage are different
+  jobs), it becomes another span source feeding it.
 - **Dashboard: Kong Manager OSS + Grafana**, not Konga. Kong Manager was
   open-sourced and bundled into Kong Gateway 3.4+ (`admin_gui_listen`,
   default port `8002`) — confirmed via Kong's own
@@ -51,10 +55,10 @@ learn Kong's Kubernetes-native operating model as part of this POC.
 
 ## Architecture
 
-![Kong ingress + API gateway architecture: client through Kong proxy to each UI backend, Kong Manager for config, Prometheus/Grafana for Kong traffic metrics](docs/diagrams/kong-ingress-architecture.svg)
+![Kong ingress + API gateway architecture: client through Kong proxy to each UI backend, Kong Manager for config, Prometheus/Grafana for Kong traffic metrics, and Kong traces flowing through the OTel Collector into Jaeger](docs/diagrams/kong-ingress-architecture.svg)
 
-Solid arrows are proxied HTTP requests; dashed arrows are the metrics
-scrape/visualization path. Every backend box keeps living in its own
+Solid arrows are proxied HTTP requests; dashed arrows are the telemetry
+(metrics/trace) paths. Every backend box keeps living in its own
 namespace (`observability`, `argocd`, `kube-system`) — Kong's `Ingress`
 objects avoid the cross-namespace-backend restriction the same way the
 Traefik `IngressRoute`s did, by being declared alongside their target.
@@ -82,6 +86,13 @@ Traefik `IngressRoute`s did, by being declared alongside their target.
 - `KongClusterPlugin` named `prometheus`, plugin `prometheus`, no
   `config` overrides needed (defaults expose `/metrics` on the status
   listener `:8100`) — global, applies gateway-wide.
+- `KongClusterPlugin` named `opentelemetry`, plugin `opentelemetry`,
+  `config.endpoint:
+  "http://opentelemetry-collector.observability.svc.cluster.local:4318/v1/traces"`
+  (OTLP/HTTP — the plugin doesn't speak gRPC) — global, every request
+  through the gateway gets a span. These land in Jaeger through the
+  exact same OTel Collector pipeline the (currently nonexistent) sample
+  app would use, so there's no new ingestion path to build.
 - The existing Prometheus gets a new scrape target for Kong's `:8100`
   metrics endpoint; a community Kong Grafana dashboard gets imported
   for traffic visualization (requests, latency, status codes).
@@ -141,6 +152,10 @@ Before (or as part of) applying the Kong changes:
    little traffic.
 7. `kubectl get all -n traefik` returns nothing — confirms the live
    decommission actually happened, not just a git change.
+8. After generating a little traffic, Jaeger (`/jaeger/`) shows a
+   service named after Kong's `opentelemetry` plugin resource attributes
+   with spans for the gateway hop — confirms Kong's traces are actually
+   reaching Jaeger through the Collector, not just configured.
 
 ## Out of scope
 

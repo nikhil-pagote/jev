@@ -20,16 +20,17 @@ kubectl -n kube-system get pods -l k8s-app=hubble-ui
 # ArgoCD sync status — root app-of-apps plus every child
 kubectl get applications -n argocd -o wide 2>/dev/null || echo "ArgoCD not deployed"
 
-# Traefik
-kubectl get pods -n traefik
-kubectl get svc -n traefik traefik 2>/dev/null
+# Kong
+kubectl get pods -n kong
+kubectl get svc -n kong 2>/dev/null
 
 # Observability namespace
 kubectl get pods -n observability -o wide
 kubectl get svc -n observability
 
-# IngressRoutes
-kubectl get ingressroute --all-namespaces 2>/dev/null
+# Kong-managed Ingress/plugins
+kubectl get ingress --all-namespaces -o wide 2>/dev/null
+kubectl get kongplugins,kongclusterplugins --all-namespaces 2>/dev/null
 
 # Any pods not Running
 kubectl get pods --all-namespaces | grep -vE "Running|Completed|NAME"
@@ -45,7 +46,7 @@ Report as a table:
 | Cilium | kube-system | Running / Error | kube-proxy replacement |
 | Hubble Relay/UI | kube-system | Running / Error | |
 | ArgoCD `root` | argocd | Synced / OutOfSync | app-of-apps |
-| Traefik | traefik | Running / Error | NodePort 30080 |
+| Kong | kong | Running / Error | proxy NodePort 30080, manager NodePort 30002 |
 | Prometheus | observability | Running / Error | |
 | Grafana | observability | Running / Error | |
 | Jaeger | observability | Running / Error | |

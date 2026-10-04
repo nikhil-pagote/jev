@@ -3,6 +3,14 @@
 > Local copy of the plan approved at
 > `~/.claude/plans/i-am-planning-to-cryptic-kettle.md`. See `.claude/intent.md`
 > for the why behind each decision.
+>
+> **Superseded in part** — kept as a historical record of what was
+> originally built. Traefik (referenced throughout below) has since been
+> replaced by **Kong**; see
+> `docs/superpowers/specs/2026-10-04-kong-ingress-gateway-design.md` for
+> the current ingress/API-gateway design, and `CLAUDE.md` for the current
+> architecture. The cluster-creation step also moved from rootless to
+> rootful Podman — see `CLAUDE.md`'s "Container runtime" section.
 
 ## Context
 
