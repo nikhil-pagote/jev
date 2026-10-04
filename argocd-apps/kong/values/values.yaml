@@ -9,23 +9,19 @@
 env:
   database: "off"
   admin_gui_listen: "0.0.0.0:8002"
-  # Kong Manager's kconfig.js leaves ADMIN_API_URL empty by default, so
-  # its frontend JS falls back to building the admin API URL from
-  # window.location.hostname + ADMIN_API_PORT (8001) — but 8001 is only
-  # the pod's internal container port, not exposed via NodePort (the
-  # admin API's actual NodePort is 30001). Confirmed: port 8001 is
-  # unreachable externally, 30001 works. Setting this explicitly fixes
-  # the Kong Manager UI, which otherwise loads (HTTP 200) but can't
-  # reach the Admin API. The node IP is dynamic (current cluster:
-  # 10.89.0.4) — this value needs updating if the node IP changes.
-  admin_gui_api_url: "http://10.89.0.4:30001"
   # Kong's own tracing instrumentation defaults to "off" (confirmed via
   # Admin API: opentelemetry_tracing = ['off']), independent of the
   # opentelemetry KongClusterPlugin being attached and correctly
   # configured — with it off, Kong generates no spans at all, so the
   # plugin has nothing to export. "all" turns on span generation for
-  # every request phase.
-  opentelemetry_tracing: "all"
+  # every request phase. (opentelemetry_tracing is the deprecated Kong
+  # 3.9 name for this setting — tracing_instrumentations is current.)
+  tracing_instrumentations: "all"
+  # Kong's global tracing sampling rate defaults to 0.01 (1%), so 99% of
+  # requests through the gateway produce no span even with
+  # instrumentation on. The design spec requires every request to get a
+  # span, so sample everything.
+  tracing_sampling_rate: "1"
 
 ingressController:
   enabled: true
@@ -41,6 +37,15 @@ admin:
   enabled: true
   http:
     enabled: true
+    # Kong Manager's kconfig.js falls back to
+    # window.location.hostname + ADMIN_API_PORT, where ADMIN_API_PORT
+    # reflects Kong's actual admin_listen port (driven by this
+    # containerPort — see templates/_helpers.tpl KONG_ADMIN_LISTEN and
+    # kong.adminLocalURL). Setting the container port equal to the
+    # NodePort makes that fallback resolve correctly without a
+    # hardcoded node IP, which would go stale if the cluster is
+    # recreated with a new node IP.
+    containerPort: 30001
     nodePort: 30001
   tls:
     enabled: false
