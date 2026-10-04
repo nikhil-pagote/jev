@@ -138,6 +138,16 @@ metadata:
   labels:
     global: "true"
 plugin: prometheus
+# This plugin's own per-request metric families (status codes, latency,
+# bandwidth) all default to false in this Kong version — with no config
+# block, only the always-on status-endpoint metrics (kong_nginx_*,
+# kong_memory_*) get exported, never kong_http_requests_total. Verified
+# by reading the Admin API's filled-in plugin config and the raw
+# /metrics output directly from the pod.
+config:
+  status_code_metrics: true
+  latency_metrics: true
+  bandwidth_metrics: true
 ---
 # Feeds Jaeger through the same OTel Collector pipeline every other
 # trace already uses — Kong doesn't replace Jaeger, it becomes another

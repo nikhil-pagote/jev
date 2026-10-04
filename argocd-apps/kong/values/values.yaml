@@ -19,6 +19,13 @@ env:
   # reach the Admin API. The node IP is dynamic (current cluster:
   # 10.89.0.4) — this value needs updating if the node IP changes.
   admin_gui_api_url: "http://10.89.0.4:30001"
+  # Kong's own tracing instrumentation defaults to "off" (confirmed via
+  # Admin API: opentelemetry_tracing = ['off']), independent of the
+  # opentelemetry KongClusterPlugin being attached and correctly
+  # configured — with it off, Kong generates no spans at all, so the
+  # plugin has nothing to export. "all" turns on span generation for
+  # every request phase.
+  opentelemetry_tracing: "all"
 
 ingressController:
   enabled: true
