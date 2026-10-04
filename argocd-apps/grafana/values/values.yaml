@@ -46,4 +46,12 @@ dashboards:
     k8s-dashboard:
       gnetId: 15661
       revision: 2
-      datasource: Prometheus
+      # This dashboard's panels all reference "${DS__VICTORIAMETRICS-PROD-ALL}"
+      # (baked in by its author against their own setup), not the
+      # standard "${DS_PROMETHEUS}" — a plain `datasource: Prometheus`
+      # string does nothing here, since the chart's substitution only
+      # matches that one standard name. List form does a literal
+      # find/replace of the exact placeholder instead.
+      datasource:
+        - name: DS__VICTORIAMETRICS-PROD-ALL
+          value: Prometheus
