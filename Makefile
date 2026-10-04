@@ -3,6 +3,7 @@ NAMESPACE_ARGOCD := argocd
 NAMESPACE_CILIUM := kube-system
 KONG_PROXY_NODEPORT := 30080
 KONG_MANAGER_NODEPORT := 30002
+KONG_ADMIN_NODEPORT := 30001
 
 .PHONY: cluster cilium argocd bootstrap all urls destroy
 
@@ -52,7 +53,8 @@ urls:
 	echo "  Jaeger        http://$$NODE_IP:$(KONG_PROXY_NODEPORT)/jaeger"; \
 	echo "  ArgoCD        http://$$NODE_IP:$(KONG_PROXY_NODEPORT)/argocd"; \
 	echo "  Hubble        http://$$NODE_IP:$(KONG_PROXY_NODEPORT)/hubble"; \
-	echo "  Kong Manager  http://$$NODE_IP:$(KONG_MANAGER_NODEPORT)/ (read-only, DB-less)"
+	echo "  Kong Manager  http://$$NODE_IP:$(KONG_MANAGER_NODEPORT)/ (read-only, DB-less)"; \
+	echo "  Kong Admin    http://$$NODE_IP:$(KONG_ADMIN_NODEPORT)/ (Admin API, read-only, DB-less)"
 
 destroy:
 	sudo KIND_EXPERIMENTAL_PROVIDER=podman kind delete cluster --name $(CLUSTER_NAME)

@@ -53,7 +53,8 @@ same `<app>/app.yaml` shape, so root's own sync is always just
 
 **Ingress:** plain `NodePort` (no `extraPortMappings`) — reached via the
 node's container IP. Proxy on NodePort `30080` (unchanged from the old
-Traefik setup), Kong Manager + Admin API on a second NodePort `30002`.
+Traefik setup), Kong Manager on NodePort `30002`, Admin API separately
+on NodePort `30001` — two distinct ports, not one shared port.
 Path-based routing via the `ingress-routes` child Application
 (`argocd-apps/ingress-routes/`, plain `Ingress` + `KongPlugin`/
 `KongClusterPlugin` objects, one `Ingress` per UI, each in its target's

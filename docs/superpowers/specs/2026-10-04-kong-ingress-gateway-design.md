@@ -94,8 +94,15 @@ Traefik `IngressRoute`s did, by being declared alongside their target.
   exact same OTel Collector pipeline the (currently nonexistent) sample
   app would use, so there's no new ingestion path to build.
 - The existing Prometheus gets a new scrape target for Kong's `:8100`
-  metrics endpoint; a community Kong Grafana dashboard gets imported
-  for traffic visualization (requests, latency, status codes).
+  metrics endpoint. **Descoped during implementation** (ruling recorded
+  2026-10-04): importing a community Kong Grafana dashboard for visual
+  traffic charts is optional, left to whoever wants one, not a required
+  deliverable — the actual requirement (`kong_http_requests_total` et al.
+  reaching Prometheus, queryable) is independently verified working;
+  a pre-built dashboard is presentation polish on top of that, and
+  automating its provisioning (picking/pinning a `gnetId`, wiring
+  `dashboardProviders`) wasn't judged worth the added surface for this
+  POC.
 
 ## Kong deployment
 
@@ -106,15 +113,15 @@ Traefik `IngressRoute`s did, by being declared alongside their target.
 - Proxy `Service`: `type: NodePort`, explicit `nodePort: 30080` on the
   proxy port — unchanged from Traefik, so `make urls` and existing
   muscle memory keep working.
-- Admin/Manager exposure: a second explicit `nodePort` (`30002`) on the
-  same `Service`, mapped to container port `8002`
-  (`admin_gui_listen`/admin API). **Needs verification at implementation
-  time**: the `kong/kong` chart's README still documents the pre-OSS,
-  enterprise-gated `manager.*`/`enterprise.enabled` values block, which
-  may or may not reflect how the *current* chart version exposes the
-  now-bundled-in-OSS Kong Manager. The implementation plan should
-  include a quick check of the chart's actual `values.yaml` (not just
-  its README) before committing to exact key names.
+- Admin/Manager exposure: **two** separate NodePorts, confirmed by
+  inspecting the actual vendored chart (`argocd-apps/kong/chart/`) during
+  implementation rather than trusting its README (which still describes
+  the pre-OSS, enterprise-gated `manager.*`/`enterprise.enabled` path) —
+  `30001` for the Admin API (`admin.enabled`/`admin.http`, container port
+  `8001`) and `30002` for Kong Manager (`manager.http`, container port
+  `8002`). `env.admin_gui_listen: "0.0.0.0:8002"` set directly, since the
+  chart's own automation for it is still gated behind `enterprise.enabled`
+  even though Kong Gateway 3.9 supports OSS Kong Manager natively.
 - Namespace `kong` replaces `traefik`.
 
 ## Decommissioning Traefik
@@ -144,12 +151,17 @@ Before (or as part of) applying the Kong changes:
 4. Rate limit visibly triggers: hit `/prometheus` more than 60 times in
    a minute, confirm a `429` with Kong's rate-limit headers
    (`X-RateLimit-*`).
-5. Kong Manager reachable on `30002`, shows the `Ingress`-derived
-   services/routes/plugins read-only (write attempts should be rejected
-   — DB-less).
-6. Kong's `/metrics` (`:8100`) scraped by Prometheus; the imported
-   Grafana dashboard shows non-zero request counts after generating a
-   little traffic.
+5. Kong Manager reachable on `30002` (Admin API separately on `30001`),
+   shows the `Ingress`-derived services/routes/plugins read-only (write
+   attempts should be rejected — DB-less; not independently tested live
+   — DB-less rejecting Admin API writes is well-established Kong
+   behavior, not something specific to this config that could plausibly
+   differ).
+6. Kong's `/metrics` (`:8100`) scraped by Prometheus — confirmed via
+   Prometheus's own query API returning non-zero `kong_http_requests_total`
+   after generating traffic. A Grafana dashboard for this is optional
+   (see "API-gateway plugins" above) — not independently verified as
+   part of this requirement.
 7. `kubectl get all -n traefik` returns nothing — confirms the live
    decommission actually happened, not just a git change.
 8. After generating a little traffic, Jaeger (`/jaeger/`) shows a
