@@ -41,6 +41,10 @@ argocd:
 	helm install argocd argo/argo-cd \
 		-n $(NAMESPACE_ARGOCD) --create-namespace \
 		--set server.extraArgs="{--insecure,--rootpath=/argocd}" \
+		--set controller.podAnnotations."prometheus\.io/scrape"=true \
+		--set controller.podAnnotations."prometheus\.io/port"=8082 \
+		--set server.podAnnotations."prometheus\.io/scrape"=true \
+		--set server.podAnnotations."prometheus\.io/port"=8083 \
 		--wait
 
 bootstrap:

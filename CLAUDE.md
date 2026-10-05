@@ -100,6 +100,13 @@ those CRDs exist. Full design: `docs/superpowers/specs/2026-10-04-kong-ingress-g
   chart's simple string-substitution silently fails to match — or a live
   template variable that self-resolves); verify by downloading the raw
   JSON and checking before assuming `datasource: Prometheus` is enough.
+- ArgoCD's `argocd-application-controller` and `argocd-server` pods carry
+  `prometheus.io/scrape`/`prometheus.io/port` annotations set via the
+  Makefile's `argocd` target (`controller.podAnnotations`/
+  `server.podAnnotations` — ArgoCD's own install isn't GitOps-managed, so
+  this lives there, not in a values.yaml). Without it, `argocd_app_info`
+  et al. never reach Prometheus and the ArgoCD Grafana dashboard (14584)
+  stays empty.
 - Kong runs **DB-less** (`env.database: "off"`) — config comes entirely
   from `Ingress`/`KongPlugin`/`KongClusterPlugin` CRs via the bundled
   Ingress Controller, not Admin API writes. Kong Manager (bundled since

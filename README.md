@@ -116,7 +116,7 @@ instead of this file is lost the next time the Grafana pod restarts.
 | kube-state-metrics-v2 | 13332 | Yes |
 | K8s / Storage / Volumes / Cluster | 11454 | Likely (depends on PVCs existing) |
 | CoreDNS | 14981 | No — its `$instance` variable hardcodes `job="coredns"`, but this repo's Prometheus discovers CoreDNS via the generic `kubernetes-service-endpoints` job instead |
-| ArgoCD | 14584 | No — ArgoCD's own metrics endpoint isn't scraped by Prometheus yet |
+| ArgoCD | 14584 | Yes (except the "Uptime" panel — it hardcodes `job="argocd-server-metrics"`, which this repo's annotation-based scraping doesn't produce; everything else keys off the metric name alone) |
 | Loki stack monitoring (Promtail, Loki) | 14055 | No — needs Promtail, which this repo doesn't deploy (logs reach Loki via native OTLP from the OTel Collector instead) |
 | PolicyReport Details | 13995 | No — needs a policy-report exporter (e.g. Kyverno's) not in this stack |
 
