@@ -11,3 +11,26 @@ server:
 # Out of scope for this POC — no alert routing configured.
 alertmanager:
   enabled: false
+
+# CoreDNS is already scraped generically via kubernetes-service-endpoints
+# auto-discovery, but that job always reports job="kubernetes-service-endpoints"
+# regardless of which service it found. The community "CoreDNS" Grafana
+# dashboard (grafana.com ID 14981) hardcodes job="coredns" in its $instance
+# variable query — a convention from kube-prometheus-stack's auto-created
+# ServiceMonitor, which this repo doesn't use. This dedicated job exists
+# only to satisfy that one dashboard; CoreDNS ends up scraped twice
+# (harmless, same precedent as pod-annotation + service-endpoint scraping
+# running in parallel elsewhere).
+extraScrapeConfigs: |
+  - job_name: coredns
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names: [kube-system]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        regex: kube-dns
+        action: keep
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        regex: metrics
+        action: keep
