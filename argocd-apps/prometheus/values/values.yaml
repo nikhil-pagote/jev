@@ -7,6 +7,15 @@ server:
   # matches the "don't strip, app handles its own subpath" pattern used
   # for Grafana/Jaeger/ArgoCD (see argocd-apps/ingress-routes/routes.yaml).
   prefixURL: /prometheus
+  # Chart default is 1m, too coarse for dashboards' short rate()/irate()
+  # windows (e.g. Grafana's $__interval, often well under a minute on a
+  # 15m-range panel) — confirmed live: with a 1m scrape interval, those
+  # queries only ever see 0-1 real samples in their lookback window,
+  # so rate() has nothing to compute a slope from and returns no data,
+  # even though the underlying counter itself is scraped and present.
+  global:
+    scrape_interval: 15s
+    evaluation_interval: 15s
 
 # Out of scope for this POC — no alert routing configured.
 alertmanager:
