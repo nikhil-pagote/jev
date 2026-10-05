@@ -37,7 +37,36 @@ presets:
     enabled: true
 
 config:
+  receivers:
+    hostmetrics:
+      # system.memory.utilization and system.filesystem.utilization are
+      # disabled by default on their scrapers — confirmed live, absent
+      # from the exporter output otherwise — but the dashboard's RAM/FS
+      # panels need them. Merges with (doesn't replace) the hostMetrics
+      # preset's own filesystem exclude_mount_points/exclude_fs_types.
+      scrapers:
+        memory:
+          metrics:
+            system.memory.utilization:
+              enabled: true
+        filesystem:
+          metrics:
+            system.filesystem.utilization:
+              enabled: true
+        # Not part of the hostMetrics preset's default scraper list at
+        # all — needed for the dashboard's SWAP panel.
+        paging:
+          metrics:
+            system.paging.utilization:
+              enabled: true
   processors:
+    # The hostmetrics receiver doesn't set host.name itself — confirmed
+    # live, absent from every series otherwise — but the dashboard's
+    # $host variable needs it to populate.
+    resourcedetection/system:
+      detectors: [system]
+      system:
+        hostname_sources: [os]
     # hostmetrics doesn't set service.namespace itself, but the
     # "OpenTelemetry Collector HostMetrics" Grafana dashboard
     # (grafana.com ID 20376) requires it to populate its $service_namespace
@@ -67,11 +96,13 @@ config:
       # until this was added.
       resource_to_telemetry_conversion:
         enabled: true
-      # Without this, system.cpu.time (a counter, unit "s") exports as
-      # system_cpu_time_seconds_total — confirmed live. The OTel
-      # HostMetrics dashboard (grafana.com ID 20376) expects the bare
-      # "system_cpu_time" name throughout.
-      add_metric_suffixes: false
+      # add_metric_suffixes: false was tried here and had zero effect
+      # (confirmed live) — this collector version (0.160.0) still
+      # exports e.g. system.cpu.time as system_cpu_time_seconds_total
+      # regardless. The Grafana dashboard provisioning
+      # (argocd-apps/grafana/values/values.yaml) rewrites the
+      # dashboard's queries to match these real names instead, rather
+      # than fighting the exporter.
 
   service:
     pipelines:
@@ -81,7 +112,7 @@ config:
         exporters: [otlp/jaeger]
       metrics:
         receivers: [otlp]
-        processors: [memory_limiter, resource/hostmetrics, batch]
+        processors: [memory_limiter, resourcedetection/system, resource/hostmetrics, batch]
         exporters: [prometheus]
       logs:
         receivers: [otlp]
