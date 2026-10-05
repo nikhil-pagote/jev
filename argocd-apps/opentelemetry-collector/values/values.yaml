@@ -73,6 +73,12 @@ config:
         # ordinary case of a process exiting between the scraper
         # listing PIDs and reading each one's /proc entry.
         process:
+          # Like system.memory.utilization earlier, process.cpu.utilization
+          # is disabled by default — the scraper only emits the raw
+          # process.cpu.time counter otherwise.
+          metrics:
+            process.cpu.utilization:
+              enabled: true
           mute_process_name_error: true
           mute_process_exe_error: true
           mute_process_io_error: true
