@@ -3571,7 +3571,7 @@ dashboards:
                     "uid": "Prometheus"
                   },
                   "editorMode": "code",
-                  "expr": "process_cpu_utilization{ host_name=\"${host}\", service_namespace=\"${service_namespace}\"}",
+                  "expr": "process_cpu_utilization_ratio{ host_name=\"${host}\", service_namespace=\"${service_namespace}\"}",
                   "format": "time_series",
                   "interval": "",
                   "intervalFactor": 1,
@@ -3982,7 +3982,7 @@ dashboards:
                     "uid": "Prometheus"
                   },
                   "editorMode": "code",
-                  "expr": "process_memory_usage{host_name=\"${host}\", service_namespace=\"${service_namespace}\"}",
+                  "expr": "process_memory_usage_bytes{host_name=\"${host}\", service_namespace=\"${service_namespace}\"}",
                   "format": "time_series",
                   "hide": false,
                   "intervalFactor": 1,
@@ -4121,7 +4121,7 @@ dashboards:
                     "uid": "Prometheus"
                   },
                   "editorMode": "code",
-                  "expr": "rate(process_disk_io{ host_name=\"${host}\", service_namespace=\"${service_namespace}\" }[$__rate_interval])",
+                  "expr": "rate(process_disk_io_bytes_total{ host_name=\"${host}\", service_namespace=\"${service_namespace}\" }[$__rate_interval])",
                   "format": "time_series",
                   "hide": false,
                   "interval": "",
