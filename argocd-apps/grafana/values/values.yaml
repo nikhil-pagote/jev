@@ -128,3 +128,16 @@ dashboards:
       datasource:
         - name: DS_PROMETHEUS
           value: Prometheus
+
+    # OpenTelemetry Collector HostMetrics (Node Exporter) — kept
+    # alongside Node Exporter Full rather than replacing it (see
+    # argocd-apps/opentelemetry-collector/values/values.yaml for the
+    # DaemonSet + hostMetrics preset that feeds this). Its $service_namespace
+    # variable needs the "jev" value set there by the Collector's
+    # resource/hostmetrics processor to populate at all.
+    otel-collector-hostmetrics:
+      gnetId: 20376
+      revision: 6
+      datasource:
+        - name: DS_MIMIR
+          value: Prometheus

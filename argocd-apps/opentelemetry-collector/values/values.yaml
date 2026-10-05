@@ -1,4 +1,13 @@
-mode: deployment
+# daemonset (not deployment) so the hostMetrics preset below reports
+# real per-node stats from every node, not just whichever one a single
+# Deployment pod happens to land on.
+mode: daemonset
+
+# kind's control-plane node has the standard NoSchedule taint — without
+# this the DaemonSet would only run on the 2 worker nodes.
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    effect: NoSchedule
 
 # contrib image needed for the "prometheus" exporter (metrics fan-out)
 image:
@@ -18,7 +27,28 @@ podAnnotations:
   prometheus.io/scrape: "true"
   prometheus.io/port: "8889"
 
+# Adds the hostmetrics receiver (cpu/load/memory/disk/filesystem/network
+# scrapers) to the metrics pipeline below, plus the read-only hostPath
+# mount (/ -> /hostfs) it needs. No hostNetwork/hostPID required — those
+# only matter for process-level scraping, which isn't part of this
+# preset's scraper list.
+presets:
+  hostMetrics:
+    enabled: true
+
 config:
+  processors:
+    # hostmetrics doesn't set service.namespace itself, but the
+    # "OpenTelemetry Collector HostMetrics" Grafana dashboard
+    # (grafana.com ID 20376) requires it to populate its $service_namespace
+    # variable. Applies to the whole metrics pipeline — fine today since
+    # nothing else flows through it yet; would need its own sub-pipeline
+    # if a real app's OTLP metrics should NOT get this label later.
+    resource/hostmetrics:
+      attributes:
+        - key: service.namespace
+          value: jev
+          action: upsert
   exporters:
     otlp/jaeger:
       endpoint: jaeger.observability.svc.cluster.local:4317
@@ -40,7 +70,7 @@ config:
         exporters: [otlp/jaeger]
       metrics:
         receivers: [otlp]
-        processors: [memory_limiter, batch]
+        processors: [memory_limiter, resource/hostmetrics, batch]
         exporters: [prometheus]
       logs:
         receivers: [otlp]
