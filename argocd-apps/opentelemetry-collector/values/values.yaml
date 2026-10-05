@@ -83,14 +83,16 @@ config:
           mute_process_exe_error: true
           mute_process_io_error: true
   processors:
-    # The hostmetrics receiver doesn't set host.name itself — confirmed
-    # live, absent from every series otherwise — but the dashboard's
-    # $host variable needs it to populate.
-    resourcedetection/system:
-      detectors: [system]
-      system:
-        hostname_sources: [os]
-    # hostmetrics doesn't set service.namespace itself, but the
+    # The hostmetrics receiver doesn't set host.name itself, but the
+    # dashboard's $host variable needs it to populate. Originally used
+    # resourcedetection/system (hostname_sources: [os]) for this — wrong
+    # in a DaemonSet: that reads the container's own OS hostname, which
+    # Kubernetes sets to the ever-changing pod name, so $host (and every
+    # dashboard URL bookmarking it) broke on every single pod restart.
+    # OTEL_K8S_NODE_NAME is the chart's own Downward API env var
+    # (spec.nodeName) — the real, stable node name instead.
+    #
+    # hostmetrics doesn't set service.namespace itself either, but the
     # "OpenTelemetry Collector HostMetrics" Grafana dashboard
     # (grafana.com ID 20376) requires it to populate its $service_namespace
     # variable. Applies to the whole metrics pipeline — fine today since
@@ -98,6 +100,9 @@ config:
     # if a real app's OTLP metrics should NOT get this label later.
     resource/hostmetrics:
       attributes:
+        - key: host.name
+          value: ${env:OTEL_K8S_NODE_NAME}
+          action: upsert
         - key: service.namespace
           value: jev
           action: upsert
@@ -135,7 +140,7 @@ config:
         exporters: [otlp/jaeger]
       metrics:
         receivers: [otlp]
-        processors: [memory_limiter, resourcedetection/system, resource/hostmetrics, batch]
+        processors: [memory_limiter, resource/hostmetrics, batch]
         exporters: [prometheus]
       logs:
         receivers: [otlp]
