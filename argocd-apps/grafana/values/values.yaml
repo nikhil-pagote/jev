@@ -153,7 +153,14 @@ dashboards:
     # "Disk Space Used Basic" stay empty. "RAM Total"/"Memory Basic"
     # use system_memory_limit, which this receiver doesn't emit at all
     # (no host-memory-limit concept, unlike Node Exporter's
-    # node_memory_MemTotal_bytes) — also stays empty.
+    # node_memory_MemTotal_bytes) — also stays empty. "Uptime" wants
+    # the collector's own self-telemetry (port 8888), which goes
+    # through a separate internal pipeline that never gets our
+    # host_name/service_namespace labels. "CPU"/"Memory Stack"/"Disk
+    # I/O Utilization" want the OTel "process" scraper, deliberately
+    # not enabled here — it needs hostPID, the one privilege increase
+    # this whole setup was built to avoid. 20 of 31 queries across the
+    # other panels confirmed returning real data.
     otel-collector-hostmetrics:
       json: |-
         {
@@ -2499,7 +2506,7 @@ dashboards:
                     "uid": "Prometheus"
                   },
                   "editorMode": "code",
-                  "expr": "rate(system_network_io_bytes_total{host_name=\"${host}\", service_namespace=\"${service_namespace}\", direction=\"receive\"}[$__interval])",
+                  "expr": "rate(system_network_io_bytes_total{host_name=\"${host}\", service_namespace=\"${service_namespace}\", direction=\"receive\"}[$__rate_interval])",
                   "format": "time_series",
                   "intervalFactor": 1,
                   "legendFormat": "{{device}}",
@@ -2513,7 +2520,7 @@ dashboards:
                     "uid": "Prometheus"
                   },
                   "editorMode": "code",
-                  "expr": "rate(system_network_io_bytes_total{host_name=\"${host}\", service_namespace=\"${service_namespace}\", direction=\"transmit\"}[$__interval])",
+                  "expr": "rate(system_network_io_bytes_total{host_name=\"${host}\", service_namespace=\"${service_namespace}\", direction=\"transmit\"}[$__rate_interval])",
                   "format": "time_series",
                   "intervalFactor": 1,
                   "legendFormat": "trans {{device}} ",
@@ -4114,7 +4121,7 @@ dashboards:
                     "uid": "Prometheus"
                   },
                   "editorMode": "code",
-                  "expr": "rate(process_disk_io{ host_name=\"${host}\", service_namespace=\"${service_namespace}\" }[$__interval])",
+                  "expr": "rate(process_disk_io{ host_name=\"${host}\", service_namespace=\"${service_namespace}\" }[$__rate_interval])",
                   "format": "time_series",
                   "hide": false,
                   "interval": "",
