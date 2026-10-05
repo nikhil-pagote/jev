@@ -61,6 +61,17 @@ config:
         insecure: true
     prometheus:
       endpoint: ${env:MY_POD_IP}:8889
+      # Without this, OTel resource attributes (host.name, our
+      # service.namespace=jev, etc.) never become Prometheus labels —
+      # confirmed live: every hostmetrics series had zero such labels
+      # until this was added.
+      resource_to_telemetry_conversion:
+        enabled: true
+      # Without this, system.cpu.time (a counter, unit "s") exports as
+      # system_cpu_time_seconds_total — confirmed live. The OTel
+      # HostMetrics dashboard (grafana.com ID 20376) expects the bare
+      # "system_cpu_time" name throughout.
+      add_metric_suffixes: false
 
   service:
     pipelines:
