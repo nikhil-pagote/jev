@@ -16,17 +16,8 @@ server:
   global:
     scrape_interval: 15s
     evaluation_interval: 15s
-  # Temporary — enabled only to delete stale host_name series left
-  # over from today's hostmetrics/DaemonSet debugging (dead pod names
-  # recorded before host.name was pinned to the stable node name).
-  # Disabled by default for a reason (lets anyone with network access
-  # wipe time series); removed again right after the cleanup.
-  # Helm replaces (doesn't merge) list values, so web.enable-lifecycle
-  # (the chart default, needed for the config-reloader's /-/reload
-  # trigger) must be repeated here alongside the new flag.
   extraFlags:
     - web.enable-lifecycle
-    - web.enable-admin-api
 
 # Out of scope for this POC — no alert routing configured.
 alertmanager:
