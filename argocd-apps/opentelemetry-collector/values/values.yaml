@@ -9,6 +9,13 @@ tolerations:
   - key: node-role.kubernetes.io/control-plane
     effect: NoSchedule
 
+# Needed for the "process" scraper below (per-process CPU/memory/disk
+# breakdown) to see every process on the node, not just its own
+# container's PID namespace. Deliberately NOT enabled earlier in this
+# setup — this is a real privilege increase, added only on explicit
+# request once host/network-level metrics alone weren't enough.
+hostPID: true
+
 # contrib image needed for the "prometheus" exporter (metrics fan-out)
 image:
   repository: otel/opentelemetry-collector-contrib
@@ -59,6 +66,16 @@ config:
           metrics:
             system.paging.utilization:
               enabled: true
+        # Also not in the preset's default list — needed for the
+        # dashboard's CPU/Memory Stack/Disk I/O Utilization panels.
+        # Requires hostPID (set above) to see every process on the
+        # node. mute_process_*_error avoids noisy errors for the
+        # ordinary case of a process exiting between the scraper
+        # listing PIDs and reading each one's /proc entry.
+        process:
+          mute_process_name_error: true
+          mute_process_exe_error: true
+          mute_process_io_error: true
   processors:
     # The hostmetrics receiver doesn't set host.name itself — confirmed
     # live, absent from every series otherwise — but the dashboard's
